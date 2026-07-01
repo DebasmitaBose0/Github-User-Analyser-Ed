@@ -468,15 +468,17 @@ export default async function handler(
       })
     }
 
-    if (error.response?.status === 403) {
-      return res.status(403).json({
+    if (error.response?.status === 403 || error.response?.status === 429) {
+      const rateLimit = parseRestRateLimit(error.response.headers as unknown as Record<string, unknown>)
+      return res.status(error.response?.status || 403).json({
         user: {} as GitHubUser,
         repos: [],
         contributions: null,
         engagement: null,
         productivity: null,
-        error: 'GitHub API rate limit reached. Please try again in a few minutes.',
+        error: 'GitHub API rate limit reached. Please try again later or add GITHUB_TOKEN.',
         errorType: 'rate_limited',
+        rateLimit,
       })
     }
 
