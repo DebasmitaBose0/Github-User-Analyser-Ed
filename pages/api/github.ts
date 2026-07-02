@@ -10,6 +10,7 @@ import type {
 } from '@/types/github'
 import { computeProductivityStats } from '@/lib/contributionStats'
 import { getCached, setCached } from '@/lib/cache'
+import { sanitizeUsername, validateUsername } from '@/lib/validation'
 
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -365,16 +366,18 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<UserData>
 ) {
-  const { username } = req.query
+  const rawUsername = req.query.username
+  const username = sanitizeUsername(typeof rawUsername === 'string' ? rawUsername : '')
 
-  if (!username || typeof username !== 'string') {
+  const validation = validateUsername(username)
+  if (!validation.valid) {
     return res.status(400).json({
       user: {} as GitHubUser,
       repos: [],
       contributions: null,
       engagement: null,
       productivity: null,
-      error: 'Username is required',
+      error: validation.reason || 'Invalid username',
       errorType: 'unknown',
     })
   }
