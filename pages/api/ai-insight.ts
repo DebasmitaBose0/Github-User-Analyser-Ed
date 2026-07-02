@@ -54,6 +54,68 @@ ${shared}
 Return only the roast text. No preamble, no markdown headers, no quotation marks around it.`
 }
 
+// ---------------------------------------------------------------------------
+// Per-IP fixed-window rate limiter (in-memory).
+//
+// This lives in the serverless instance's memory, so it is per-instance and
+// resets on cold starts: a meaningful deterrent against scripted abuse of the
+// metered Gemini call, not a hard cross-instance guarantee (a durable shared
+// store would be the fully robust version). Each client IP is limited to
+// RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW_MS; the tracking map itself is
+// bounded by RATE_LIMIT_MAX_IPS so it cannot grow without limit.
+const RATE_LIMIT_WINDOW_MS = 60000
+const RATE_LIMIT_MAX = 10
+const RATE_LIMIT_MAX_IPS = 5000
+
+interface RateWindow {
+  count: number
+  resetAt: number
+}
+
+const rateBuckets = new Map<string, RateWindow>()
+
+function getClientIp(req: NextApiRequest): string {
+  const forwarded = req.headers['x-forwarded-for']
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim()
+  }
+  if (Array.isArray(forwarded) && forwarded.length > 0) {
+    return forwarded[0].trim()
+  }
+  return req.socket.remoteAddress || 'unknown'
+}
+
+// Returns null when the request is allowed, or the number of seconds to wait
+// before retrying when this IP has exceeded its window.
+function checkRateLimit(ip: string): number | null {
+  const now = Date.now()
+  const bucket = rateBuckets.get(ip)
+
+  if (bucket && now < bucket.resetAt) {
+    if (bucket.count >= RATE_LIMIT_MAX) {
+      return Math.ceil((bucket.resetAt - now) / 1000)
+    }
+    bucket.count += 1
+    return null
+  }
+
+  // Starting a fresh window for this IP: keep the tracking map bounded by
+  // dropping expired windows first, then evicting oldest-first if still full.
+  if (rateBuckets.size >= RATE_LIMIT_MAX_IPS) {
+    for (const [key, entry] of rateBuckets) {
+      if (now >= entry.resetAt) rateBuckets.delete(key)
+    }
+    while (rateBuckets.size >= RATE_LIMIT_MAX_IPS) {
+      const oldest = rateBuckets.keys().next().value
+      if (oldest === undefined) break
+      rateBuckets.delete(oldest)
+    }
+  }
+
+  rateBuckets.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+  return null
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<AiInsightResponse>
@@ -66,6 +128,16 @@ export default async function handler(
     return res
       .status(503)
       .json({ text: null, error: 'AI insights are not configured on this server (missing GEMINI_API_KEY)' })
+  }
+
+  const clientIp = getClientIp(req)
+  const retryAfter = checkRateLimit(clientIp)
+  if (retryAfter !== null) {
+    res.setHeader('Retry-After', String(retryAfter))
+    return res.status(429).json({
+      text: null,
+      error: `Too many requests \u2014 please wait ${retryAfter}s and try again`,
+    })
   }
 
   const body = req.body as AiInsightRequestBody
