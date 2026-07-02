@@ -33,7 +33,7 @@ export default async function handler(
   }
 
   try {
-    const response = await axios.get(`https://api.github.com/repos/${owner}/${repo}/readme`, {
+    const response = await axios.get(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/readme`, {
       headers,
     })
 
