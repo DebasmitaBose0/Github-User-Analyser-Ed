@@ -1,11 +1,41 @@
 import '@/styles/globals.css'
 import type { AppProps } from 'next/app'
 import { ThemeProvider } from '@/lib/ThemeContext'
+import ErrorBoundary from '@/components/ErrorBoundary'
+import { logError } from '@/lib/errorLogger'
+import { useEffect } from 'react'
+import { useRouter } from 'next/router'
+
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // silently ignore registration failures
+    })
+  }
+}
 
 export default function App({ Component, pageProps }: AppProps) {
+  const router = useRouter()
+
+  useEffect(() => {
+    registerServiceWorker()
+  }, [])
+
+  useEffect(() => {
+    const handleRouteChange = (url: string) => {
+      if (typeof window !== 'undefined' && 'gtag' in window) {
+        // placeholder for analytics page tracking
+      }
+    }
+    router.events.on('routeChangeComplete', handleRouteChange)
+    return () => router.events.off('routeChangeComplete', handleRouteChange)
+  }, [router.events])
+
   return (
     <ThemeProvider>
-      <Component {...pageProps} />
+      <ErrorBoundary onError={(err) => logError('App', err)}>
+        <Component {...pageProps} />
+      </ErrorBoundary>
     </ThemeProvider>
   )
 }

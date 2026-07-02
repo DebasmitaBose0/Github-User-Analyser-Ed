@@ -12,9 +12,9 @@ export default function Footer() {
             </p>
           </div>
 
-          <div className="flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex flex-wrap justify-center items-center gap-4 sm:gap-6 text-sm text-gray-500 dark:text-gray-400">
             <a
-              href="https://github.com/your-username/Github-User-Analyser"
+              href="https://github.com/arghya29/Github-User-Analyser"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
@@ -22,7 +22,7 @@ export default function Footer() {
               Source Code
             </a>
             <a
-              href="https://github.com/your-username/Github-User-Analyser/issues"
+              href="https://github.com/arghya29/Github-User-Analyser/issues"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
@@ -37,11 +37,22 @@ export default function Footer() {
             >
               GitHub API Docs
             </a>
+            <button
+              onClick={() => {
+                if (typeof window !== 'undefined' && 'beforeinstallprompt' in window) {
+                  window.dispatchEvent(new Event('beforeinstallprompt'))
+                }
+              }}
+              className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+              aria-label="Install app"
+            >
+              Install App
+            </button>
           </div>
         </div>
 
         <div className="border-t border-gray-100 dark:border-slate-800 mt-6 pt-6 flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-          <p>© {year} GitHub User Analyzer. Not affiliated with GitHub, Inc.</p>
+          <p>&copy; {year} GitHub User Analyzer. Not affiliated with GitHub, Inc.</p>
           <p>Built with Next.js, TypeScript, Tailwind CSS &amp; Recharts</p>
         </div>
       </div>
