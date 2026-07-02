@@ -14,6 +14,18 @@ interface CacheEntry<T> {
 
 const store = new Map<string, CacheEntry<unknown>>()
 
+// Hard ceiling on live entries. Together with the prune-on-write below this
+// gives the cache a bounded memory footprint even when a long tail of distinct
+// keys (e.g. one badge per username) expires without ever being read again.
+const MAX_ENTRIES = 500
+
+function pruneExpired(): void {
+  const now = Date.now()
+  for (const [key, entry] of store) {
+    if (now > entry.expiresAt) store.delete(key)
+  }
+}
+
 export function getCached<T>(key: string): T | null {
   const entry = store.get(key)
   if (!entry) return null
@@ -25,5 +37,17 @@ export function getCached<T>(key: string): T | null {
 }
 
 export function setCached<T>(key: string, value: T, ttlMs: number): void {
+  // Drop expired entries first so a burst of new keys doesn't evict entries
+  // that are merely old-but-still-valid.
+  pruneExpired()
+  // If still at capacity for a genuinely new key, evict oldest-first (Map
+  // preserves insertion order) until there is room.
+  if (!store.has(key)) {
+    while (store.size >= MAX_ENTRIES) {
+      const oldest = store.keys().next().value
+      if (oldest === undefined) break
+      store.delete(oldest)
+    }
+  }
   store.set(key, { value, expiresAt: Date.now() + ttlMs })
 }
