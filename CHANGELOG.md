@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- IndexedDB-based persistent cache for cross-session data retention
+- Offline contribution queue with localStorage-backed pending syncs
+- Hybrid in-memory + IndexedDB caching via getCachedWithFallback
+- Cache statistics reporting for debugging and monitoring
 - GitHub User Analyzer project initialization
 - GitHub API integration for user data fetching
 - Search functionality to find GitHub users
