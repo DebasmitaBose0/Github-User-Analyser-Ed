@@ -71,7 +71,7 @@ async function fetchBadgeData(username: string): Promise<BadgeData | null> {
   }
 
   // REST fallback — no streak without GraphQL, just return profile basics
-  const userRes = await axios.get(`https://api.github.com/users/${username}`, { headers })
+  const userRes = await axios.get(`https://api.github.com/users/${encodeURIComponent(username)}`, { headers })
   return {
     name: userRes.data.name || userRes.data.login,
     totalContributions: 0,
