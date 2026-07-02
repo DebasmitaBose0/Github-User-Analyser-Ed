@@ -84,4 +84,11 @@ export interface UserData {
   errorType?: 'not_found' | 'rate_limited' | 'unknown'
 }
 
+export interface PaginationState {
+  page: number
+  pageSize: number
+  totalPages: number
+  totalItems: number
+}
+
 export type SortOption = 'stars' | 'updated' | 'forks'
