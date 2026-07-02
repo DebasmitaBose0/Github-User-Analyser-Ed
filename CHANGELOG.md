@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Animated StatCard component with count-up effect for top-level metrics
+- ContributionTimeline area chart with daily/cumulative toggle for contribution trends
+- RepoLanguagesBar horizontal bar chart showing language distribution by repo count
+- Quick stats row (repos, stars, forks, languages) above the dashboard charts
 - GitHub User Analyzer project initialization
 - GitHub API integration for user data fetching
 - Search functionality to find GitHub users

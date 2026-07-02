@@ -12,6 +12,9 @@ import ExportPanel from '@/components/ExportPanel'
 import RepoReadmeModal from '@/components/RepoReadmeModal'
 import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
+import RepoLanguagesBar from '@/components/RepoLanguagesBar'
+import ContributionTimeline from '@/components/ContributionTimeline'
+import StatCard from '@/components/StatCard'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -86,6 +89,16 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       </div>
       <UserCard user={user} />
 
+      {/* Quick stats */}
+      {repos.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <StatCard label="Repositories" value={repos.length} color="#3b82f6" />
+          <StatCard label="Total Stars" value={repos.reduce((s, r) => s + r.stargazers_count, 0)} color="#f59e0b" />
+          <StatCard label="Total Forks" value={repos.reduce((s, r) => s + r.forks_count, 0)} color="#10b981" />
+          <StatCard label="Languages" value={languageCounts.length} color="#8b5cf6" />
+        </div>
+      )}
+
       {/* AI Insights + Export & Share — at the top for quick access */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
         <AiInsightPanel
@@ -100,17 +113,27 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
         <LanguageChart data={pieData} mode={usingByteData ? 'bytes' : 'count'} />
-        {contributions ? (
-          <ActivityHeatmap data={contributions} />
-        ) : (
-          <div className="bg-white dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-lg p-6 h-full flex items-center justify-center text-center">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">
-              Activity heatmap unavailable. This data requires server-side GraphQL access (a
-              configured GITHUB_TOKEN) or may be temporarily unavailable.
-            </p>
-          </div>
-        )}
+        <RepoLanguagesBar data={languageCounts.map(({ name, count }) => ({ name, value: count }))} />
       </div>
+
+      {contributions && (
+        <div className="grid grid-cols-1 gap-6 mt-6">
+          <ContributionTimeline data={contributions} />
+        </div>
+      )}
+
+      {contributions ? (
+        <div className="grid grid-cols-1 gap-6 mt-6">
+          <ActivityHeatmap data={contributions} />
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-lg p-6 h-full flex items-center justify-center text-center">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
+            Activity heatmap unavailable. This data requires server-side GraphQL access (a
+            configured GITHUB_TOKEN) or may be temporarily unavailable.
+          </p>
+        </div>
+      )}
 
       {/* Engagement, productivity, achievements — all need the GraphQL token path */}
       {contributions !== null && engagement !== null && productivity !== null ? (
