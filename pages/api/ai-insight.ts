@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import axios, { type AxiosError } from 'axios'
+import { getClientIp, createRateLimiter } from '@/lib/rateLimit'
 
 interface AiInsightRequestBody {
   type: 'bio' | 'roast'
@@ -54,6 +55,20 @@ ${shared}
 Return only the roast text. No preamble, no markdown headers, no quotation marks around it.`
 }
 
+// ---------------------------------------------------------------------------
+// Per-IP fixed-window rate limiter (in-memory).
+//
+// This lives in the serverless instance's memory, so it is per-instance and
+// resets on cold starts: a meaningful deterrent against scripted abuse of the
+// metered Gemini call, not a hard cross-instance guarantee (a durable shared
+// store would be the fully robust version). Each client IP is limited to
+// RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW_MS; the tracking map itself is
+// bounded internally so it cannot grow without limit.
+const RATE_LIMIT_WINDOW_MS = 60000
+const RATE_LIMIT_MAX = 10
+
+const rateLimiter = createRateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX)
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<AiInsightResponse>
@@ -66,6 +81,16 @@ export default async function handler(
     return res
       .status(503)
       .json({ text: null, error: 'AI insights are not configured on this server (missing GEMINI_API_KEY)' })
+  }
+
+  const clientIp = getClientIp(req)
+  const retryAfter = rateLimiter.check(clientIp)
+  if (retryAfter !== null) {
+    res.setHeader('Retry-After', String(retryAfter))
+    return res.status(429).json({
+      text: null,
+      error: `Too many requests \u2014 please wait ${retryAfter}s and try again`,
+    })
   }
 
   const body = req.body as AiInsightRequestBody
@@ -82,7 +107,15 @@ export default async function handler(
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: body.type === 'roast' ? 0.9 : 0.6,
-          maxOutputTokens: 300,
+          // Raised from 300 → 1024: gemini-2.5-flash-lite can run internal
+          // reasoning/thinking that counts against maxOutputTokens. A 300-token
+          // budget can be fully consumed by reasoning, leaving the visible text
+          // field empty. 1024 gives ample room for both reasoning and output.
+          maxOutputTokens: 1024,
+          // Disable thinking for this short-output use case: the bio/roast
+          // prompts are deterministic enough that chain-of-thought reasoning
+          // adds latency and token cost without improving the result quality.
+          thinkingConfig: { thinkingBudget: 0 },
         },
       },
       {
@@ -93,7 +126,18 @@ export default async function handler(
       }
     )
 
-    const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined
+    const candidate = response.data?.candidates?.[0]
+    const text = candidate?.content?.parts?.[0]?.text as string | undefined
+    const finishReason = candidate?.finishReason as string | undefined
+
+    // If the model stopped because it hit the token limit, treat it as a failure
+    // regardless of whether partial text exists, to avoid returning truncated output.
+    if (finishReason === 'MAX_TOKENS') {
+      return res.status(500).json({
+        text: null,
+        error: 'AI response was truncated because it reached the maximum token limit. Please try again.',
+      })
+    }
 
     if (!text) {
       return res.status(500).json({ text: null, error: 'AI did not return a response' })
@@ -102,8 +146,12 @@ export default async function handler(
     return res.status(200).json({ text: text.trim() })
   } catch (err: unknown) {
     const error = err as AxiosError
-    if (error.response?.status === 429) {
+    const status = error.response?.status
+    if (status === 429) {
       return res.status(429).json({ text: null, error: 'AI quota reached for now — try again in a minute' })
+    }
+    if (status === 503) {
+      return res.status(503).json({ text: null, error: 'AI service is temporarily overloaded — try again in a moment' })
     }
     return res.status(500).json({ text: null, error: 'Failed to generate AI insight' })
   }
