@@ -70,12 +70,24 @@ async function fetchBadgeData(username: string): Promise<BadgeData | null> {
     }
   }
 
-  // REST fallback — no streak without GraphQL, just return profile basics
-  const userRes = await axios.get(`https://api.github.com/users/${encodeURIComponent(username)}`, { headers })
-  return {
-    name: userRes.data.name || userRes.data.login,
-    totalContributions: 0,
-    currentStreak: 0,
+  // REST fallback — no streak without GraphQL, just return profile basics.
+  // Treat GitHub's 404 as "user not found" (return null so the handler responds
+  // 404, matching the GraphQL path); only genuine failures propagate to a 500.
+  try {
+    const userRes = await axios.get(
+      `https://api.github.com/users/${encodeURIComponent(username)}`,
+      { headers, timeout: 5000 }
+    )
+    return {
+      name: userRes.data.name || userRes.data.login,
+      totalContributions: 0,
+      currentStreak: 0,
+    }
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 404) {
+      return null
+    }
+    throw err
   }
 }
 
