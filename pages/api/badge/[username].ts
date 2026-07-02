@@ -76,7 +76,7 @@ async function fetchBadgeData(username: string): Promise<BadgeData | null> {
   try {
     const userRes = await axios.get(
       `https://api.github.com/users/${encodeURIComponent(username)}`,
-      { headers }
+      { headers, timeout: 5000 }
     )
     return {
       name: userRes.data.name || userRes.data.login,
