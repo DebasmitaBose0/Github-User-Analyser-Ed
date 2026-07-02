@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Zod-based input validation schema (lib/validation) with regex-pattern username validation
+- Server-side Zod validation in /api/github route with informative error messages
+- Client-side Zod validation in search and compare flows on index page
+- Client-side Zod validation in [username] profile page before API call
 - GitHub User Analyzer project initialization
 - GitHub API integration for user data fetching
 - Search functionality to find GitHub users

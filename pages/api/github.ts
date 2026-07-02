@@ -10,6 +10,7 @@ import type {
 } from '@/types/github'
 import { computeProductivityStats } from '@/lib/contributionStats'
 import { getCached, setCached } from '@/lib/cache'
+import { validateUsername } from '@/lib/validation'
 
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -365,9 +366,9 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<UserData>
 ) {
-  const { username } = req.query
+  const raw = req.query.username
 
-  if (!username || typeof username !== 'string') {
+  if (typeof raw !== 'string') {
     return res.status(400).json({
       user: {} as GitHubUser,
       repos: [],
@@ -379,7 +380,21 @@ export default async function handler(
     })
   }
 
-  const cacheKey = `github-profile:${username.toLowerCase()}`
+  const validation = validateUsername(raw)
+  if (!validation.valid) {
+    return res.status(400).json({
+      user: {} as GitHubUser,
+      repos: [],
+      contributions: null,
+      engagement: null,
+      productivity: null,
+      error: validation.error,
+      errorType: 'unknown',
+    })
+  }
+
+  const username = validation.sanitized
+  const cacheKey = `github-profile:${username}`
   const cached = getCached<UserData>(cacheKey)
   if (cached) {
     // Rate-limit quota is deliberately not cached (it would go stale), so fetch

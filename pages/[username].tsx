@@ -11,6 +11,7 @@ import Footer from '@/components/Footer'
 import ProfileDashboard from '@/components/ProfileDashboard'
 import { fetchUserData } from '@/lib/github'
 import { recordSearch } from '@/lib/searchHistory'
+import { usernameSchema } from '@/lib/validation'
 import type { UserData } from '@/types/github'
 
 type ErrorType = 'not_found' | 'rate_limited' | 'unknown'
@@ -54,12 +55,20 @@ export default function UserProfilePage({ og }: UserProfilePageProps) {
       return
     }
 
+    const parsed = usernameSchema.safeParse(username)
+    if (!parsed.success) {
+      setLoading(false)
+      setError(parsed.error.errors[0].message)
+      setErrorType('unknown')
+      return
+    }
+
     let cancelled = false
     setLoading(true)
     setError('')
     setData(null)
 
-    fetchUserData(username)
+    fetchUserData(parsed.data)
       .then((result) => {
         if (cancelled) return
         if (result.error) {

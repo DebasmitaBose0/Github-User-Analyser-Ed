@@ -12,6 +12,7 @@ import CompareResult from '@/components/CompareResult'
 import Footer from '@/components/Footer'
 import { fetchUserData } from '@/lib/github'
 import { loadHistory, clearHistory as clearStoredHistory } from '@/lib/searchHistory'
+import { usernameSchema } from '@/lib/validation'
 import type { UserData } from '@/types/github'
 
 type Mode = 'search' | 'compare'
@@ -42,13 +43,13 @@ export default function Home({ baseUrl }: HomePageProps) {
   }, [])
 
   const handleSearch = (rawUsername: string) => {
-    const username = rawUsername.trim()
-    if (!username) {
-      setError('Please enter a username')
+    const parsed = usernameSchema.safeParse(rawUsername.trim())
+    if (!parsed.success) {
+      setError(parsed.error.errors[0].message)
       return
     }
     setError('')
-    router.push(`/${encodeURIComponent(username)}`)
+    router.push(`/${encodeURIComponent(parsed.data.toLowerCase())}`)
   }
 
   const clearHistory = () => setHistory(clearStoredHistory())
@@ -57,8 +58,11 @@ export default function Home({ baseUrl }: HomePageProps) {
     const usernameA = rawA.trim()
     const usernameB = rawB.trim()
 
-    if (!usernameA || !usernameB) {
-      setCompareError('Enter both usernames to compare')
+    const parsedA = usernameSchema.safeParse(usernameA)
+    const parsedB = usernameSchema.safeParse(usernameB)
+
+    if (!parsedA.success || !parsedB.success) {
+      setCompareError(parsedA.success ? parsedB.error.errors[0].message : parsedA.error.errors[0].message)
       return
     }
 
@@ -68,7 +72,10 @@ export default function Home({ baseUrl }: HomePageProps) {
     setCompareUserB(null)
 
     try {
-      const [dataA, dataB] = await Promise.all([fetchUserData(usernameA), fetchUserData(usernameB)])
+      const [dataA, dataB] = await Promise.all([
+        fetchUserData(parsedA.data),
+        fetchUserData(parsedB.data),
+      ])
 
       if (dataA.error) {
         setCompareError(`${usernameA}: ${dataA.error}`)
