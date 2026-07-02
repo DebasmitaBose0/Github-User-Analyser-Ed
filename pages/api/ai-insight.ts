@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import axios, { type AxiosError } from 'axios'
+import { getClientIp, createRateLimiter } from '@/lib/rateLimit'
 
 interface AiInsightRequestBody {
   type: 'bio' | 'roast'
@@ -54,6 +55,20 @@ ${shared}
 Return only the roast text. No preamble, no markdown headers, no quotation marks around it.`
 }
 
+// ---------------------------------------------------------------------------
+// Per-IP fixed-window rate limiter (in-memory).
+//
+// This lives in the serverless instance's memory, so it is per-instance and
+// resets on cold starts: a meaningful deterrent against scripted abuse of the
+// metered Gemini call, not a hard cross-instance guarantee (a durable shared
+// store would be the fully robust version). Each client IP is limited to
+// RATE_LIMIT_MAX requests per RATE_LIMIT_WINDOW_MS; the tracking map itself is
+// bounded internally so it cannot grow without limit.
+const RATE_LIMIT_WINDOW_MS = 60000
+const RATE_LIMIT_MAX = 10
+
+const rateLimiter = createRateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX)
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<AiInsightResponse>
@@ -66,6 +81,16 @@ export default async function handler(
     return res
       .status(503)
       .json({ text: null, error: 'AI insights are not configured on this server (missing GEMINI_API_KEY)' })
+  }
+
+  const clientIp = getClientIp(req)
+  const retryAfter = rateLimiter.check(clientIp)
+  if (retryAfter !== null) {
+    res.setHeader('Retry-After', String(retryAfter))
+    return res.status(429).json({
+      text: null,
+      error: `Too many requests \u2014 please wait ${retryAfter}s and try again`,
+    })
   }
 
   const body = req.body as AiInsightRequestBody

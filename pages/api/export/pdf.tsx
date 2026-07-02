@@ -13,6 +13,7 @@ import {
 import axios from 'axios'
 import type { UserData } from '@/types/github'
 import { getCached } from '@/lib/cache'
+import { getClientIp, createRateLimiter } from '@/lib/rateLimit'
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
@@ -193,7 +194,34 @@ const LANG_COLORS: Record<string, string> = {
 }
 
 // ── Fetch avatar as base64 ────────────────────────────────────────────────────
+//
+// avatar_url is part of the client-supplied POST body (see the handler below),
+// so it must never be trusted as an arbitrary fetch target — an attacker could
+// otherwise point it at internal services, localhost, or a cloud metadata
+// endpoint and have this server fetch it on their behalf (SSRF), with the
+// response bytes reflected back into the returned PDF.
+//
+// GitHub's real avatar URLs are always `https://avatars.githubusercontent.com/...`
+// (confirmed against how avatar_url is populated elsewhere in this codebase,
+// from GitHub's GraphQL `avatarUrl` field), so we allowlist exactly that host
+// and scheme and refuse to fetch anything else. A rejected/invalid URL simply
+// means no avatar in the PDF (avatarDataUrl is already optional downstream),
+// not a failed export.
+const ALLOWED_AVATAR_HOSTS = new Set(['avatars.githubusercontent.com'])
+
+function isAllowedAvatarUrl(rawUrl: unknown): rawUrl is string {
+  if (typeof rawUrl !== 'string' || rawUrl.length === 0) return false
+  let parsed: URL
+  try {
+    parsed = new URL(rawUrl)
+  } catch {
+    return false
+  }
+  return parsed.protocol === 'https:' && ALLOWED_AVATAR_HOSTS.has(parsed.hostname)
+}
+
 async function avatarToDataUrl(url: string): Promise<string | null> {
+  if (!isAllowedAvatarUrl(url)) return null
   try {
     const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 5000 })
     const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64')
@@ -202,6 +230,14 @@ async function avatarToDataUrl(url: string): Promise<string | null> {
     return null
   }
 }
+
+// Per-IP rate limit: this route performs an expensive PDF render
+// (renderToBuffer) plus, previously, an unrestricted outbound fetch. Public
+// and unauthenticated, so it needs the same throttling /api/ai-insight has.
+const RATE_LIMIT_WINDOW_MS = 60000
+const RATE_LIMIT_MAX = 5
+
+const rateLimiter = createRateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX)
 
 // ── Resume document ───────────────────────────────────────────────────────────
 interface ResumeDocProps {
@@ -406,6 +442,13 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
 
 // ── API handler ───────────────────────────────────────────────────────────────
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const clientIp = getClientIp(req)
+  const retryAfter = rateLimiter.check(clientIp)
+  if (retryAfter !== null) {
+    res.setHeader('Retry-After', String(retryAfter))
+    return res.status(429).json({ error: `Too many requests \u2014 please wait ${retryAfter}s and try again` })
+  }
+
   const { username } = req.query
   if (!username || typeof username !== 'string') {
     return res.status(400).json({ error: 'username is required' })
