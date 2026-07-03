@@ -22,6 +22,7 @@ export default function CompareForm({ onCompare, loading }: CompareFormProps) {
           value={userA}
           onChange={(e) => setUserA(e.target.value)}
           placeholder="First username..."
+          aria-label="First username to compare"
           className="flex-1 w-full px-4 py-3 bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-400"
           disabled={loading}
         />
@@ -31,6 +32,7 @@ export default function CompareForm({ onCompare, loading }: CompareFormProps) {
           value={userB}
           onChange={(e) => setUserB(e.target.value)}
           placeholder="Second username..."
+          aria-label="Second username to compare"
           className="flex-1 w-full px-4 py-3 bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400 dark:placeholder-gray-400"
           disabled={loading}
         />
