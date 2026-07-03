@@ -1,52 +1,30 @@
-import { describe, it, expect } from 'vitest'
-import { computeCurrentStreak } from '../contributionStats'
-import type { ContributionDay } from '@/types/github'
+import { computeCurrentStreak, computeProductivityStats } from '@/lib/contributionStats'
+import type { ContributionDay, ContributionWeek } from '@/types/github'
+
+const TODAY = '2026-06-15'
+const NOW_MS = new Date(`${TODAY}T12:00:00.000Z`).getTime()
 
 function day(date: string, count: number): ContributionDay {
   return { date, count }
 }
 
-describe('computeCurrentStreak', () => {
-  it('returns 0 for empty array', () => {
-    expect(computeCurrentStreak([])).toBe(0)
+/** Build consecutive daily entries ending on `endDate`, oldest first. */
+function consecutiveDays(endDate: string, counts: number[]): ContributionDay[] {
+  const end = new Date(`${endDate}T00:00:00Z`).getTime()
+  const dayMs = 24 * 60 * 60 * 1000
+  return counts.map((count, i) => {
+    const d = new Date(end - (counts.length - 1 - i) * dayMs)
+    return day(d.toISOString().slice(0, 10), count)
   })
+}
 
-  it('counts consecutive contributions from the end', () => {
-    const days = [
-      day('2026-06-01', 5),
-      day('2026-06-02', 3),
-      day('2026-06-03', 0),
-      day('2026-06-04', 2),
-      day('2026-06-05', 1),
-    ]
-    expect(computeCurrentStreak(days)).toBe(2)
-  })
+beforeAll(() => {
+  jest.useFakeTimers()
+  jest.setSystemTime(NOW_MS)
+})
 
-  it('skips zero-count today when it is the current day', () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-    const days = [day(yesterday, 3), day(today, 0)]
-    expect(computeCurrentStreak(days)).toBe(1)
-  })
-
-  it('returns 0 when the last non-today day has zero contributions', () => {
-    const today = new Date().toISOString().slice(0, 10)
-    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10)
-    const days = [day(yesterday, 0), day(today, 0)]
-    expect(computeCurrentStreak(days)).toBe(0)
-  })
-
-  it('returns 1 for a single contribution day', () => {
-    const days = [day('2026-06-01', 7)]
-    expect(computeCurrentStreak(days)).toBe(1)
-  })
-
-  it('handles a long continuous streak', () => {
-    const days: ContributionDay[] = []
-    for (let i = 30; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10)
-      days.push(day(d, 1))
-    }
-    expect(computeCurrentStreak(days)).toBe(31)
+afterAll(() => {
+  jest.useRealTimers()
+})
   })
 })

@@ -1,74 +1,190 @@
-import { describe, it, expect } from 'vitest'
-import { computeHealthScore } from '../healthScore'
+import { computeHealthScore } from '@/lib/healthScore'
 import type { Repository } from '@/types/github'
+
+const NOW = new Date('2026-06-15T12:00:00.000Z').getTime()
+
+function daysAgo(days: number): string {
+  return new Date(NOW - days * 24 * 60 * 60 * 1000).toISOString()
+}
 
 function makeRepo(overrides: Partial<Repository> = {}): Repository {
   return {
-    name: 'test-repo',
-    description: 'A test repository',
-    html_url: 'https://github.com/test/test-repo',
-    stargazers_count: 10,
-    forks_count: 5,
+    name: 'sample-repo',
+    description: '',
+    stargazers_count: 0,
+    forks_count: 0,
     language: 'TypeScript',
-    updated_at: new Date().toISOString(),
+    updated_at: daysAgo(0),
+    open_issues_count: 0,
+    closed_issues_count: 0,
+    license: null,
     ...overrides,
-  }
+  } as Repository
 }
 
-describe('computeHealthScore', () => {
-  it('returns Excellent for a well-maintained repo', () => {
-    const repo = makeRepo({
-      updated_at: new Date().toISOString(),
-      open_issues_count: 2,
-      closed_issues_count: 18,
-      license: 'MIT',
-      description: 'A well-documented project',
-    })
-    const result = computeHealthScore(repo)
-    expect(result.score).toBeGreaterThanOrEqual(80)
-    expect(result.label).toBe('Excellent')
+beforeAll(() => {
+  jest.useFakeTimers()
+  jest.setSystemTime(NOW)
+})
+
+afterAll(() => {
+  jest.useRealTimers()
+})
+
+describe('computeHealthScore — recency tiers', () => {
+  it('scores 40 when updated within 30 days (boundary: exactly 30)', () => {
+    expect(computeHealthScore(makeRepo({ updated_at: daysAgo(30) })).breakdown.recency).toBe(40)
   })
 
-  it('returns Needs attention for a stale unlicensed repo', () => {
-    const repo = makeRepo({
-      updated_at: '2024-01-01T00:00:00Z',
-      open_issues_count: 0,
-      closed_issues_count: 0,
-      license: null,
-      description: '',
-    })
-    const result = computeHealthScore(repo)
-    expect(result.score).toBeLessThan(40)
-    expect(result.label).toBe('Needs attention')
+  it('scores 32 when updated between 31 and 90 days (boundary: exactly 90)', () => {
+    expect(computeHealthScore(makeRepo({ updated_at: daysAgo(90) })).breakdown.recency).toBe(32)
   })
 
-  it('awards full license points when license is present', () => {
-    const withLicense = computeHealthScore(makeRepo({ license: 'MIT' }))
-    const withoutLicense = computeHealthScore(makeRepo({ license: null }))
-    expect(withLicense.breakdown.license).toBe(15)
-    expect(withoutLicense.breakdown.license).toBe(0)
+  it('scores 22 when updated between 91 and 180 days (boundary: exactly 180)', () => {
+    expect(computeHealthScore(makeRepo({ updated_at: daysAgo(180) })).breakdown.recency).toBe(22)
   })
 
-  it('awards documentation points for non-empty description', () => {
-    const withDesc = computeHealthScore(makeRepo({ description: 'Has a description' }))
-    const withoutDesc = computeHealthScore(makeRepo({ description: '' }))
-    expect(withDesc.breakdown.documentation).toBe(15)
-    expect(withoutDesc.breakdown.documentation).toBe(0)
+  it('scores 12 when updated between 181 and 365 days (boundary: exactly 365)', () => {
+    expect(computeHealthScore(makeRepo({ updated_at: daysAgo(365) })).breakdown.recency).toBe(12)
   })
 
-  it('handles zero total issues gracefully', () => {
+  it('scores 4 when updated more than 365 days ago', () => {
+    expect(computeHealthScore(makeRepo({ updated_at: daysAgo(400) })).breakdown.recency).toBe(4)
+  })
+
+  it('scores 40 just under the 30-day edge (29 days)', () => {
+    expect(computeHealthScore(makeRepo({ updated_at: daysAgo(29) })).breakdown.recency).toBe(40)
+  })
+
+  it('drops to 32 just over the 30-day edge (31 days)', () => {
+    expect(computeHealthScore(makeRepo({ updated_at: daysAgo(31) })).breakdown.recency).toBe(32)
+  })
+})
+
+describe('computeHealthScore — issue health', () => {
+  it('returns the neutral-good 24 when no issues have ever been filed', () => {
     const result = computeHealthScore(makeRepo({ open_issues_count: 0, closed_issues_count: 0 }))
     expect(result.breakdown.issueHealth).toBe(24)
   })
 
-  it('never exceeds 100', () => {
-    const repo = makeRepo({
-      updated_at: new Date().toISOString(),
-      open_issues_count: 0,
-      closed_issues_count: 100,
-      license: 'Apache-2.0',
-      description: 'x'.repeat(100),
-    })
-    expect(computeHealthScore(repo).score).toBeLessThanOrEqual(100)
+  it('returns the neutral-good 24 when issue counts are undefined', () => {
+    const result = computeHealthScore(
+      makeRepo({ open_issues_count: undefined, closed_issues_count: undefined }),
+    )
+    expect(result.breakdown.issueHealth).toBe(24)
+  })
+
+  it('scores full 30 when every issue is closed', () => {
+    const result = computeHealthScore(makeRepo({ open_issues_count: 0, closed_issues_count: 10 }))
+    expect(result.breakdown.issueHealth).toBe(30)
+  })
+
+  it('scores 0 when every issue is open', () => {
+    const result = computeHealthScore(makeRepo({ open_issues_count: 10, closed_issues_count: 0 }))
+    expect(result.breakdown.issueHealth).toBe(0)
+  })
+
+  it('rounds the closed ratio to the nearest point (7 of 10 closed -> 21)', () => {
+    const result = computeHealthScore(makeRepo({ open_issues_count: 3, closed_issues_count: 7 }))
+    expect(result.breakdown.issueHealth).toBe(21)
+  })
+
+  it('rounds a fractional ratio (1 of 3 closed -> round(10) = 10)', () => {
+    const result = computeHealthScore(makeRepo({ open_issues_count: 2, closed_issues_count: 1 }))
+    expect(result.breakdown.issueHealth).toBe(10)
+  })
+})
+
+describe('computeHealthScore — license and documentation', () => {
+  it('awards 15 for license when a license is present', () => {
+    expect(computeHealthScore(makeRepo({ license: 'MIT' })).breakdown.license).toBe(15)
+  })
+
+  it('awards 0 for license when license is null', () => {
+    expect(computeHealthScore(makeRepo({ license: null })).breakdown.license).toBe(0)
+  })
+
+  it('awards 15 for documentation when a non-empty description is present', () => {
+    expect(computeHealthScore(makeRepo({ description: 'A useful tool' })).breakdown.documentation).toBe(15)
+  })
+
+  it('awards 0 for documentation when the description is empty', () => {
+    expect(computeHealthScore(makeRepo({ description: '' })).breakdown.documentation).toBe(0)
+  })
+
+  it('awards 0 for documentation when the description is whitespace-only', () => {
+    expect(computeHealthScore(makeRepo({ description: '   \t  ' })).breakdown.documentation).toBe(0)
+  })
+})
+
+describe('computeHealthScore — total score, label, and cap', () => {
+  it('labels a top repo "Excellent" (score >= 80)', () => {
+    const result = computeHealthScore(
+      makeRepo({
+        updated_at: daysAgo(5),
+        open_issues_count: 0,
+        closed_issues_count: 10,
+        license: 'MIT',
+        description: 'Well maintained',
+      }),
+    )
+    expect(result.score).toBe(100)
+    expect(result.label).toBe('Excellent')
+  })
+
+  it('caps the score at 100 and never exceeds it', () => {
+    const result = computeHealthScore(
+      makeRepo({
+        updated_at: daysAgo(0),
+        open_issues_count: 0,
+        closed_issues_count: 50,
+        license: 'Apache-2.0',
+        description: 'Docs present',
+      }),
+    )
+    expect(result.score).toBeLessThanOrEqual(100)
+    expect(result.score).toBe(100)
+  })
+
+  it('labels "Good" at the 60 boundary', () => {
+    const result = computeHealthScore(
+      makeRepo({
+        updated_at: daysAgo(90),
+        open_issues_count: 1,
+        closed_issues_count: 0,
+        license: 'MIT',
+        description: 'Has docs',
+      }),
+    )
+    expect(result.score).toBe(62)
+    expect(result.label).toBe('Good')
+  })
+
+  it('labels "Fair" between 40 and 59', () => {
+    const result = computeHealthScore(
+      makeRepo({
+        updated_at: daysAgo(10),
+        open_issues_count: 5,
+        closed_issues_count: 0,
+        license: null,
+        description: '',
+      }),
+    )
+    expect(result.score).toBe(40)
+    expect(result.label).toBe('Fair')
+  })
+
+  it('labels "Needs attention" below 40', () => {
+    const result = computeHealthScore(
+      makeRepo({
+        updated_at: daysAgo(500),
+        open_issues_count: 5,
+        closed_issues_count: 0,
+        license: null,
+        description: '',
+      }),
+    )
+    expect(result.score).toBe(4)
+    expect(result.label).toBe('Needs attention')
   })
 })
