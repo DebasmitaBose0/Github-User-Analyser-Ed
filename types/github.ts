@@ -57,12 +57,6 @@ export interface EngagementStats {
   totalPullRequestReviewContributions: number
 }
 
-export interface ApiErrorResponse {
-  error: string
-  errorType: 'not_found' | 'rate_limited' | 'unknown'
-  statusCode?: number
-}
-
 export interface ProductivityStats {
   currentStreak: number
   longestStreak: number
@@ -88,13 +82,6 @@ export interface UserData {
   rateLimit?: RateLimitInfo
   error?: string
   errorType?: 'not_found' | 'rate_limited' | 'unknown'
-}
-
-export interface PaginationState {
-  page: number
-  pageSize: number
-  totalPages: number
-  totalItems: number
 }
 
 export type SortOption = 'stars' | 'updated' | 'forks'
