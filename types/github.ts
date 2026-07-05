@@ -57,6 +57,12 @@ export interface EngagementStats {
   totalPullRequestReviewContributions: number
 }
 
+export interface ApiErrorResponse {
+  error: string
+  errorType: 'not_found' | 'rate_limited' | 'unknown'
+  statusCode?: number
+}
+
 export interface ProductivityStats {
   currentStreak: number
   longestStreak: number

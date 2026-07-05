@@ -1,19 +1,42 @@
-import axios from 'axios'
 import type { UserData } from '@/types/github'
+import { fetchUserData as apiFetch } from './apiClient'
 
-/**
- * Fetches a user's profile, repositories, contributions, engagement and
- * productivity from the internal API route. Shared by the home page (compare
- * mode) and the /[username] profile route so both fetch identically.
- */
+interface PendingPromise {
+  promise: Promise<UserData>
+  timestamp: number
+}
+
+const pendingMap = new Map<string, PendingPromise>()
+const DEDUP_TTL_MS = 1500
+
 export async function fetchUserData(username: string): Promise<UserData> {
-  // The API returns its typed `{ error, errorType }` payload with a non-2xx
-  // status (404 not-found, 403 rate-limited, 500 failure). Resolve every status
-  // so callers can branch on `data.error` instead of catching a thrown response
-  // — this is what lets compare mode surface per-user error messages.
-  const response = await axios.get<UserData>(
-    `/api/github?username=${encodeURIComponent(username)}`,
-    { validateStatus: () => true }
-  )
-  return response.data
+  const key = `fetch:${username.toLowerCase().trim()}`
+  const existing = pendingMap.get(key)
+
+  if (existing && Date.now() - existing.timestamp < DEDUP_TTL_MS) {
+    return existing.promise
+  }
+
+  const promise = apiFetch(username).catch((err) => {
+    return {
+      user: {} as UserData['user'],
+      repos: [],
+      contributions: null,
+      engagement: null,
+      productivity: null,
+      pinnedRepos: [],
+      error: err.message || 'Failed to fetch GitHub data',
+      errorType: err.statusCode === 404 ? 'not_found' : err.statusCode === 403 ? 'rate_limited' : 'unknown',
+    } as UserData
+  })
+
+  pendingMap.set(key, { promise, timestamp: Date.now() })
+
+  promise.finally(() => {
+    if (pendingMap.get(key)?.promise === promise) {
+      pendingMap.delete(key)
+    }
+  })
+
+  return promise
 }
