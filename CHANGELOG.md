@@ -8,10 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Paginated repository browsing with configurable page sizes (6/12/24/48 per page)
-- usePagination custom hook for reusable pagination logic across components
-- Page navigation controls with smart ellipsis for large page counts
-- Items-per-page selector in repository list footer
 - GitHub User Analyzer project initialization
 - GitHub API integration for user data fetching
 - Search functionality to find GitHub users
