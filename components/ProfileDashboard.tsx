@@ -4,7 +4,6 @@ import RepositoryCard from '@/components/RepositoryCard'
 import LanguageChart from '@/components/LanguageChart'
 import ActivityHeatmap from '@/components/ActivityHeatmap'
 import SortFilterBar from '@/components/SortFilterBar'
-import Pagination from '@/components/Pagination'
 import EngagementStats from '@/components/EngagementStats'
 import ProductivityPanel from '@/components/ProductivityPanel'
 import AchievementsPanel from '@/components/AchievementsPanel'
@@ -13,7 +12,6 @@ import ExportPanel from '@/components/ExportPanel'
 import RepoReadmeModal from '@/components/RepoReadmeModal'
 import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
-import { usePagination } from '@/hooks/usePagination'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -78,19 +76,6 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
     }
     return sorted
   }, [repos, sortBy, languageFilter, repoQuery])
-
-  const {
-    page,
-    totalPages,
-    paginatedItems,
-    setPage,
-    nextPage,
-    prevPage,
-    hasNext,
-    hasPrev,
-    pageSize,
-    setPageSize,
-  } = usePagination(displayedRepos, 12)
 
   return (
     <>
@@ -166,29 +151,15 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
               onRepoQueryChange={setRepoQuery}
             />
             {displayedRepos.length > 0 ? (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {paginatedItems.map((repo) => (
-                    <RepositoryCard
-                      key={repo.name}
-                      repo={repo}
-                      onClick={() => setSelectedRepo(repo)}
-                    />
-                  ))}
-                </div>
-                <Pagination
-                  page={page}
-                  totalPages={totalPages}
-                  hasNext={hasNext}
-                  hasPrev={hasPrev}
-                  onNext={nextPage}
-                  onPrev={prevPage}
-                  onPageClick={setPage}
-                  totalItems={displayedRepos.length}
-                  pageSize={pageSize}
-                  onPageSizeChange={setPageSize}
-                />
-              </>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedRepos.map((repo) => (
+                  <RepositoryCard
+                    key={repo.name}
+                    repo={repo}
+                    onClick={() => setSelectedRepo(repo)}
+                  />
+                ))}
+              </div>
             ) : (
               <p className="text-gray-500 dark:text-gray-400">No repositories match this filter</p>
             )}
