@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import axios, { type AxiosError } from 'axios'
+import axios from 'axios'
 import type {
   UserData,
   GitHubUser,
@@ -9,7 +9,8 @@ import type {
   RateLimitInfo,
 } from '@/types/github'
 import { computeProductivityStats } from '@/lib/contributionStats'
-import { getCachedWithFallback, getCached, setCached } from '@/lib/cache'
+import { getCachedWithFallback } from '@/lib/cache'
+import { sanitizeUsername } from '@/lib/securitySanitizer'
 
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
@@ -309,20 +310,6 @@ function parseRestRateLimit(headers: Record<string, unknown>): RateLimitInfo | u
 }
 
 /**
- * Returns whichever snapshot reports the lower remaining quota. The REST
- * fallback fires two requests in parallel, each decrementing the budget, so the
- * badge should reflect the most-drained (safest) value rather than over-report.
- */
-function pickLowerRateLimit(
-  a: RateLimitInfo | undefined,
-  b: RateLimitInfo | undefined
-): RateLimitInfo | undefined {
-  if (!a) return b
-  if (!b) return a
-  return a.remaining <= b.remaining ? a : b
-}
-
-/**
  * Fetches a fresh rate-limit snapshot from GitHub's dedicated `/rate_limit`
  * endpoint, which does not itself consume quota. Picks the bucket matching the
  * path the app uses (GraphQL when a token is configured, otherwise REST core)
@@ -365,9 +352,9 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse<UserData>
 ) {
-  const { username } = req.query
+  const { username: rawUsername } = req.query
 
-  if (!username || typeof username !== 'string') {
+  if (!rawUsername || typeof rawUsername !== 'string') {
     return res.status(400).json({
       user: {} as GitHubUser,
       repos: [],
@@ -375,6 +362,21 @@ export default async function handler(
       engagement: null,
       productivity: null,
       error: 'Username is required',
+      errorType: 'unknown',
+    })
+  }
+
+  let username: string
+  try {
+    username = sanitizeUsername(rawUsername)
+  } catch {
+    return res.status(400).json({
+      user: {} as GitHubUser,
+      repos: [],
+      contributions: null,
+      engagement: null,
+      productivity: null,
+      error: 'Invalid username format.',
       errorType: 'unknown',
     })
   }
@@ -387,8 +389,7 @@ export default async function handler(
         try {
           const result = await fetchViaGraphQL(username)
           const productivity = computeProductivityStats(result.contributions.weeks)
-          const { rateLimit: _, ...data } = result
-          return { ...data, productivity } as UserData
+          return { ...result, productivity } as UserData
         } catch (err) {
           if (err instanceof GraphQLNotFoundError) {
             throw err
@@ -436,16 +437,18 @@ export default async function handler(
       })
     }
 
-    const error = err as { response?: { status?: number } }
-    if (error.response?.status === 403) {
-      return res.status(403).json({
+    const axiosErr = err as { response?: { status?: number; headers?: Record<string, unknown> } }
+    if (axiosErr.response?.status === 403 || axiosErr.response?.status === 429) {
+      const rateLimit = parseRestRateLimit(axiosErr.response.headers as unknown as Record<string, unknown>)
+      return res.status(axiosErr.response?.status || 403).json({
         user: {} as GitHubUser,
         repos: [],
         contributions: null,
         engagement: null,
         productivity: null,
-        error: 'GitHub API rate limit reached. Please try again in a few minutes.',
+        error: 'GitHub API rate limit reached. Please try again later or add GITHUB_TOKEN.',
         errorType: 'rate_limited',
+        rateLimit,
       })
     }
 
