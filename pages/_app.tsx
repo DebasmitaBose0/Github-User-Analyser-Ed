@@ -8,8 +8,8 @@ import { useRouter } from 'next/router'
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // silently ignore registration failures
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      logError('ServiceWorker', err)
     })
   }
 }
@@ -31,7 +31,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   return (
     <ThemeProvider>
-      <ErrorBoundary onError={(err) => logError('App', err)}>
+      <ErrorBoundary onError={(err, errorInfo) => logError('App', err, errorInfo)}>
         <Component {...pageProps} />
       </ErrorBoundary>
     </ThemeProvider>
