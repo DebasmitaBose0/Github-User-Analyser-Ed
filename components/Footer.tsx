@@ -1,5 +1,17 @@
+import { triggerInstall } from '@/lib/pwa'
+
 export default function Footer() {
   const year = new Date().getFullYear()
+
+  const handleInstallClick = async () => {
+    const outcome = await triggerInstall()
+    if (!outcome) {
+      const promptShown = window.dispatchEvent(new Event('beforeinstallprompt'))
+      if (!promptShown) {
+        console.log('PWA install not available')
+      }
+    }
+  }
 
   return (
     <footer className="border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 mt-16">
@@ -38,11 +50,8 @@ export default function Footer() {
               GitHub API Docs
             </a>
             <button
-              onClick={() => {
-                if (typeof window !== 'undefined' && 'beforeinstallprompt' in window) {
-                  window.dispatchEvent(new Event('beforeinstallprompt'))
-                }
-              }}
+              type="button"
+              onClick={handleInstallClick}
               className="hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
               aria-label="Install app"
             >

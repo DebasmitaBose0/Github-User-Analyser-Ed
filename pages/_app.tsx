@@ -22,10 +22,8 @@ export default function App({ Component, pageProps }: AppProps) {
   }, [])
 
   useEffect(() => {
-    const handleRouteChange = (url: string) => {
-      if (typeof window !== 'undefined' && 'gtag' in window) {
-        // placeholder for analytics page tracking
-      }
+    const handleRouteChange = () => {
+      // placeholder for analytics page tracking
     }
     router.events.on('routeChangeComplete', handleRouteChange)
     return () => router.events.off('routeChangeComplete', handleRouteChange)

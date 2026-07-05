@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
+import { setDeferredPrompt, triggerInstall, type BeforeInstallPromptEvent } from '@/lib/pwa'
 
 export default function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null)
+  const [deferredPrompt, setLocalPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
 
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault()
-      setDeferredPrompt(e)
+      const promptEvent = e as BeforeInstallPromptEvent
+      setLocalPrompt(promptEvent)
+      setDeferredPrompt(promptEvent)
       setShowPrompt(true)
     }
     window.addEventListener('beforeinstallprompt', handler)
@@ -16,12 +19,11 @@ export default function InstallPrompt() {
 
   const handleInstall = async () => {
     if (!deferredPrompt) return
-    ;(deferredPrompt as Event & { prompt: () => Promise<void> }).prompt()
-    const result = await (deferredPrompt as Event & { userChoice: Promise<{ outcome: string }> }).userChoice
-    if (result.outcome === 'accepted') {
+    const outcome = await triggerInstall()
+    if (outcome === 'accepted') {
       setShowPrompt(false)
     }
-    setDeferredPrompt(null)
+    setLocalPrompt(null)
   }
 
   if (!showPrompt) return null
@@ -33,12 +35,14 @@ export default function InstallPrompt() {
         <p className="text-xs text-gray-500 dark:text-gray-400">Add to your home screen for quick access</p>
       </div>
       <button
+        type="button"
         onClick={handleInstall}
         className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shrink-0"
       >
         Install
       </button>
       <button
+        type="button"
         onClick={() => setShowPrompt(false)}
         className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         aria-label="Dismiss"

@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Progressive Web App (PWA) support with service worker for offline caching
 - Web manifest (manifest.json) for installable app experience
-- Service worker (sw.js) with static asset caching and network-first strategy
+- Service worker (sw.js) with static asset caching and cache-first strategy
 - InstallPrompt component for native app installation on supported browsers
 - PWA meta tags (theme-color, apple-mobile-web-app, apple-touch-icon)
 - Service worker and analytics route tracking in _app.tsx
