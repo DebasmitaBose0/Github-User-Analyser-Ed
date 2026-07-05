@@ -66,6 +66,7 @@ function DefaultErrorFallback({ error, reset }: { error: Error; reset: () => voi
         {error.message || 'An unexpected error occurred'}
       </p>
       <button
+        type="button"
         onClick={reset}
         className="px-4 py-2 text-sm font-medium bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
       >

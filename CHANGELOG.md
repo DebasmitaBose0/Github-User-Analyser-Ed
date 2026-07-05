@@ -77,5 +77,5 @@ When contributing, please follow these guidelines when updating this changelog:
 
 ## Links
 
-- [Latest Release](https://github.com/YOUR-USERNAME/github-user-analyzer/releases)
-- [Unreleased Changes](https://github.com/YOUR-USERNAME/github-user-analyzer/compare/main...develop)
+- [Latest Release](https://github.com/arghya29/Github-User-Analyser/releases)
+- [Unreleased Changes](https://github.com/arghya29/Github-User-Analyser/compare/main...dev)
