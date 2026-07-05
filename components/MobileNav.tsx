@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import Link from 'next/link'
 
 interface MobileNavProps {
@@ -7,10 +8,26 @@ interface MobileNavProps {
 }
 
 export default function MobileNav({ isOpen, onClose, username }: MobileNavProps) {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      const handleKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose()
+      }
+      window.addEventListener('keydown', handleKey)
+      return () => {
+        document.body.style.overflow = ''
+        window.removeEventListener('keydown', handleKey)
+      }
+    } else {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen, onClose])
+
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
       <div
         className="fixed inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
@@ -20,6 +37,7 @@ export default function MobileNav({ isOpen, onClose, username }: MobileNavProps)
         <div className="flex items-center justify-between mb-6">
           <span className="text-lg font-bold text-gray-900 dark:text-white">Menu</span>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
             aria-label="Close menu"

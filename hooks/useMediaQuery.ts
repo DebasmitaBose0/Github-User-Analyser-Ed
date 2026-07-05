@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type Breakpoint = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 
@@ -12,12 +12,12 @@ const BREAKPOINTS: Record<Breakpoint, number> = {
 }
 
 function getBreakpoint(width: number): Breakpoint {
-  if (width >= 1536) return '2xl'
-  if (width >= 1280) return 'xl'
-  if (width >= 1024) return 'lg'
-  if (width >= 768) return 'md'
-  if (width >= 640) return 'sm'
-  return 'xs'
+  const entries = Object.entries(BREAKPOINTS) as [Breakpoint, number][]
+  let result: Breakpoint = 'xs'
+  for (const [bp, minWidth] of entries) {
+    if (width >= minWidth) result = bp
+  }
+  return result
 }
 
 export function useMediaQuery(query: string): boolean {
@@ -35,15 +35,30 @@ export function useMediaQuery(query: string): boolean {
   return matches
 }
 
+function throttle<T extends (...args: unknown[]) => void>(fn: T, delay: number): T {
+  let last = 0
+  return ((...args: unknown[]) => {
+    const now = Date.now()
+    if (now - last >= delay) {
+      last = now
+      fn(...args)
+    }
+  }) as T
+}
+
 export function useBreakpoint(): Breakpoint {
   const [bp, setBp] = useState<Breakpoint>('xs')
+  const rafId = useRef<number>()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const onResize = () => setBp(getBreakpoint(window.innerWidth))
+    const onResize = throttle(() => setBp(getBreakpoint(window.innerWidth)), 100)
     onResize()
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      if (rafId.current) cancelAnimationFrame(rafId.current)
+    }
   }, [])
 
   return bp
