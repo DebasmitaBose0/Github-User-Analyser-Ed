@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PWA meta tags (theme-color, apple-mobile-web-app, apple-touch-icon)
 - Service worker and analytics route tracking in _app.tsx
 - Install button in Footer for manual PWA trigger
+- IndexedDB-based persistent cache for cross-session data retention
+- Offline contribution queue with localStorage-backed pending syncs
+- Hybrid in-memory + IndexedDB caching via getCachedWithFallback
+- Cache statistics reporting for debugging and monitoring
 - GitHub User Analyzer project initialization
 - GitHub API integration for user data fetching
 - Search functionality to find GitHub users
