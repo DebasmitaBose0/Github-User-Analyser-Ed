@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Progressive Web App (PWA) support with service worker for offline caching
+- Web manifest (manifest.json) for installable app experience
+- Service worker (sw.js) with static asset caching and cache-first strategy
+- InstallPrompt component for native app installation on supported browsers
+- PWA meta tags (theme-color, apple-mobile-web-app, apple-touch-icon)
+- Service worker and analytics route tracking in _app.tsx
+- Install button in Footer for manual PWA trigger
 - IndexedDB-based persistent cache for cross-session data retention
 - Offline contribution queue with localStorage-backed pending syncs
 - Hybrid in-memory + IndexedDB caching via getCachedWithFallback
@@ -74,5 +81,5 @@ When contributing, please follow these guidelines when updating this changelog:
 
 ## Links
 
-- [Latest Release](https://github.com/YOUR-USERNAME/github-user-analyzer/releases)
-- [Unreleased Changes](https://github.com/YOUR-USERNAME/github-user-analyzer/compare/main...develop)
+- [Latest Release](https://github.com/arghya29/Github-User-Analyser/releases)
+- [Unreleased Changes](https://github.com/arghya29/Github-User-Analyser/compare/main...dev)
