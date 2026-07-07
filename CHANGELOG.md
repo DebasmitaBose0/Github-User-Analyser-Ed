@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Mobile-responsive navigation component (MobileNav) with bottom sheet drawer and backdrop blur
+- Custom responsive hooks (useMediaQuery, useBreakpoint, useIsMobile, useIsTablet, useIsDesktop)
+- Touch-friendly interaction improvements (tap highlight removal, min touch targets on mobile, font-size adjustment)
+- Custom scrollbar styling for WebKit browsers
+- Reduced motion support with prefers-reduced-motion media query
+- Enhanced SearchBar with auto-focus, trim-on-submit, and active scale feedback
+- Responsive CompareResult layout with mobile-optimized avatar sizes
+- Fixed broken repository owner links in Footer (your-username -> arghya29)
 - Progressive Web App (PWA) support with service worker for offline caching
 - Web manifest (manifest.json) for installable app experience
 - Service worker (sw.js) with static asset caching and cache-first strategy
