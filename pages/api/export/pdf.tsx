@@ -441,6 +441,7 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
 }
 
 // ── API handler ───────────────────────────────────────────────────────────────
+// ── API handler ───────────────────────────────────────────────────────────────
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const clientIp = getClientIp(req)
   const retryAfter = rateLimiter.check(clientIp)
@@ -468,7 +469,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!userData) {
     const cacheKey = `github-profile:${username.toLowerCase()}`
-    userData = getCached<UserData>(cacheKey)
+    // FIXED: Added await here so it correctly resolves the data from Redis!
+    userData = await getCached<UserData>(cacheKey)
   }
 
   if (!userData || !userData.user?.login) {
