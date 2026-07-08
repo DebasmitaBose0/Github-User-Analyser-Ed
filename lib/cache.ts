@@ -36,7 +36,7 @@ export async function getCachedWithFallback<T>(
 ): Promise<T> {
   // 1. Try hitting the Redis cache first
   const cached = await getCached<T>(key)
-  if (cached) return cached
++  if (cached !== null) return cached
 
   // 2. Cache miss: fetch the fresh data from the source
   const fresh = await fetcher()
