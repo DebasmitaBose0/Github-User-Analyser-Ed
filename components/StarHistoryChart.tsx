@@ -55,7 +55,7 @@ export default function StarHistoryChart({ data, repoName }: StarHistoryChartPro
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
           <Tooltip
             labelFormatter={(label) => formatDate(String(label))}
-            formatter={(value: number) => [value, 'Stars']}
+            formatter={(value) => [value, 'Stars']}
             contentStyle={{
               backgroundColor: '#1e293b',
               border: '1px solid #334155',
