@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Repository } from '@/types/github'
 import { getLanguageColorClass } from '@/lib/languageColors'
 import RepoHealthAnalysisPanel from '@/components/RepoHealthAnalysisPanel'
+import WatchlistButton from '@/components/WatchlistButton'
 
 interface RepositoryCardProps {
   repo: Repository
@@ -165,7 +166,10 @@ export default function RepositoryCard({ repo, onClick }: RepositoryCardProps) {
                 📖 Preview README
               </button>
 
-              <RepoHealthAnalysisPanel repo={repo} />
+              <div className="flex items-center justify-between">
+                <RepoHealthAnalysisPanel repo={repo} />
+                <WatchlistButton target={repo} type="repo" />
+              </div>
 
               <a
                 href={repo.html_url}

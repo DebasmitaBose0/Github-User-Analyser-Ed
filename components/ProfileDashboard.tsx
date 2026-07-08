@@ -14,6 +14,7 @@ import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
+import WatchlistPanel from '@/components/WatchlistPanel'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -87,6 +88,8 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
         {rateLimit && <RateLimitBadge rateLimit={rateLimit} />}
       </div>
       <UserCard user={user} />
+
+      <WatchlistPanel />
 
       {/* AI Insights + Export & Share — at the top for quick access */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">

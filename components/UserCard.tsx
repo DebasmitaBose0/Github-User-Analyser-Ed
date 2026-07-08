@@ -1,4 +1,5 @@
 import type { GitHubUser } from '@/types/github'
+import WatchlistButton from '@/components/WatchlistButton'
 
 interface UserCardProps {
   user: GitHubUser
@@ -103,8 +104,8 @@ export default function UserCard({ user }: UserCardProps) {
               </p>
             </div>
 
-            {/* GitHub Link */}
-            <div className="mt-6">
+            {/* GitHub Link + Watch */}
+            <div className="mt-6 flex items-center gap-3">
               <a
                 href={user.html_url}
                 target="_blank"
@@ -113,6 +114,7 @@ export default function UserCard({ user }: UserCardProps) {
               >
                 View on GitHub
               </a>
+              <WatchlistButton target={user} type="user" />
             </div>
           </div>
         </div>
