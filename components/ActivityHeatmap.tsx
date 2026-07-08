@@ -33,17 +33,33 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const allCounts = weeks.flatMap((w) => w.contributionDays.map((d) => d.count))
   const maxCount = Math.max(...allCounts, 1)
 
+  // Bug Fix 1: Properly calculate when a new month actually starts
   let lastMonth = ''
-  const monthMarkers = weeks.map((week) => {
+  const monthMarkers = weeks.map((week, i) => {
     const firstDay = week.contributionDays[0]
     if (!firstDay) return ''
-    const label = monthLabel(firstDay.date)
-    if (label !== lastMonth) {
-      lastMonth = label
-      return label
+
+    // Always label the very first week shown
+    if (i === 0) {
+      lastMonth = monthLabel(firstDay.date)
+      return lastMonth
     }
+
+    // For other weeks, check if the month starts in this week (day ends with -01)
+    const firstDayOfMonth = week.contributionDays.find((d) => d.date.endsWith('-01'))
+    if (firstDayOfMonth) {
+      lastMonth = monthLabel(firstDayOfMonth.date)
+      return lastMonth
+    }
+
     return ''
   })
+
+  // Generate today's date in YYYY-MM-DD format to filter out future days
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+    today.getDate()
+  ).padStart(2, '0')}`
 
   return (
     <CustomChartContainer title="Activity Heatmap" height="auto">
@@ -66,29 +82,13 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
                 {monthMarkers[weekIdx]}
               </div>
               {week.contributionDays.map((day) => {
+                // Bug Fix 2: Don't render blocks for days in the future
+                if (day.date > todayStr) {
+                  // Return invisible block to maintain flex grid alignment
+                  return <div key={day.date} className="w-3 h-3" />
+                }
+
                 const level = levelFor(day.count, maxCount)
                 return (
                   <div
-                    key={day.date}
-                    title={`${day.count} contribution${day.count === 1 ? '' : 's'} on ${new Date(
-                      day.date
-                    ).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
-                    className={`w-3 h-3 rounded-sm ${LEVEL_COLORS[level]}`}
-                  />
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-end gap-1.5 mt-4 text-[11px] text-gray-400 dark:text-gray-400">
-        <span>Less</span>
-        {LEVEL_COLORS.map((color, i) => (
-          <span key={i} className={`w-3 h-3 rounded-sm ${color}`} />
-        ))}
-        <span>More</span>
-      </div>
-    </CustomChartContainer>
-  )
-}
+                    key={day
