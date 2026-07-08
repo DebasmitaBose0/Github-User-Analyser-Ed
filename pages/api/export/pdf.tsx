@@ -50,7 +50,10 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     marginRight: 18,
-    border: `3px solid ${BLUE}`,
+    // Fix 1: Replaced unsupported border shorthand with explicit properties
+    borderWidth: 3,
+    borderStyle: 'solid',
+    borderColor: BLUE,
   },
   headerRight: { flex: 1 },
   name: {
@@ -58,8 +61,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: DARK,
     marginBottom: 2,
+    // Fix 2: Explicit line-height prevents bounding-box collision
+    lineHeight: 1.2,
   },
-  username: { fontSize: 12, color: BLUE, marginBottom: 6 },
+  username: { 
+    fontSize: 12, 
+    color: BLUE, 
+    marginBottom: 6,
+    lineHeight: 1.2,
+  },
   bio: { fontSize: 10, color: MID, marginBottom: 8, lineHeight: 1.5 },
   contactRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   contactItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -85,6 +95,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: DARK,
     marginBottom: 2,
+    lineHeight: 1.2,
   },
   statLabel: { fontSize: 8, color: LIGHT, textAlign: 'center' },
 
@@ -154,7 +165,8 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   repoDesc: { fontSize: 9, color: MID, marginBottom: 4, lineHeight: 1.4 },
-  repoStats: { flexDirection: 'row', gap: 12 },
+  // Fix 4: Add flexWrap so stats don't merge into one unreadable line
+  repoStats: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   repoStat: { fontSize: 8, color: LIGHT },
 
   // ── Footer ──
@@ -193,20 +205,6 @@ const LANG_COLORS: Record<string, string> = {
   Ruby: '#b91c1c',
 }
 
-// ── Fetch avatar as base64 ────────────────────────────────────────────────────
-//
-// avatar_url is part of the client-supplied POST body (see the handler below),
-// so it must never be trusted as an arbitrary fetch target — an attacker could
-// otherwise point it at internal services, localhost, or a cloud metadata
-// endpoint and have this server fetch it on their behalf (SSRF), with the
-// response bytes reflected back into the returned PDF.
-//
-// GitHub's real avatar URLs are always `https://avatars.githubusercontent.com/...`
-// (confirmed against how avatar_url is populated elsewhere in this codebase,
-// from GitHub's GraphQL `avatarUrl` field), so we allowlist exactly that host
-// and scheme and refuse to fetch anything else. A rejected/invalid URL simply
-// means no avatar in the PDF (avatarDataUrl is already optional downstream),
-// not a failed export.
 const ALLOWED_AVATAR_HOSTS = new Set(['avatars.githubusercontent.com'])
 
 function isAllowedAvatarUrl(rawUrl: unknown): rawUrl is string {
@@ -224,22 +222,19 @@ async function avatarToDataUrl(url: string): Promise<string | null> {
   if (!isAllowedAvatarUrl(url)) return null
   try {
     const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 5000 })
+    // Fix 1b: Dynamically apply the correct content-type for PNG/WebP avatars
+    const contentType = response.headers['content-type'] || 'image/jpeg'
     const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64')
-    return `data:image/jpeg;base64,${base64}`
+    return `data:${contentType};base64,${base64}`
   } catch {
     return null
   }
 }
 
-// Per-IP rate limit: this route performs an expensive PDF render
-// (renderToBuffer) plus, previously, an unrestricted outbound fetch. Public
-// and unauthenticated, so it needs the same throttling /api/ai-insight has.
 const RATE_LIMIT_WINDOW_MS = 60000
 const RATE_LIMIT_MAX = 5
-
 const rateLimiter = createRateLimiter(RATE_LIMIT_WINDOW_MS, RATE_LIMIT_MAX)
 
-// ── Resume document ───────────────────────────────────────────────────────────
 interface ResumeDocProps {
   userData: UserData
   avatarDataUrl: string | null
@@ -253,12 +248,10 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
     month: 'long',
   })
 
-  // Top 6 repos by stars
   const topRepos = [...repos]
     .sort((a, b) => b.stargazers_count - a.stargazers_count)
     .slice(0, 6)
 
-  // Language distribution
   const langCounts = new Map<string, number>()
   for (const repo of repos) {
     if (!repo.language) continue
@@ -278,8 +271,6 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
       subject="Developer Profile"
     >
       <Page size="A4" style={styles.page}>
-
-        {/* ── Header ── */}
         <View style={styles.header}>
           {avatarDataUrl && (
             // eslint-disable-next-line jsx-a11y/alt-text
@@ -317,7 +308,6 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
           </View>
         </View>
 
-        {/* ── Stats row ── */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>{user.public_repos}</Text>
@@ -343,9 +333,9 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
           ) : null}
         </View>
 
-        {/* ── Languages ── */}
+        {/* Fix 3: Add wrap={false} to block-level sections to prevent bad page breaks */}
         {topLangs.length > 0 && (
-          <View style={styles.section}>
+          <View style={styles.section} wrap={false}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Languages & Technologies</Text>
               <View style={styles.sectionLine} />
@@ -361,9 +351,8 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
           </View>
         )}
 
-        {/* ── Productivity (only if GraphQL data was available) ── */}
         {productivity && engagement && (
-          <View style={styles.section}>
+          <View style={styles.section} wrap={false}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Productivity (last year)</Text>
               <View style={styles.sectionLine} />
@@ -393,7 +382,6 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
           </View>
         )}
 
-        {/* ── Top Repositories ── */}
         {topRepos.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
@@ -401,7 +389,7 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
               <View style={styles.sectionLine} />
             </View>
             {topRepos.map((repo) => (
-              <View key={repo.name} style={styles.repoEntry}>
+              <View key={repo.name} style={styles.repoEntry} wrap={false}>
                 <View style={styles.repoTop}>
                   <Link src={repo.html_url} style={styles.repoName}>{repo.name}</Link>
                   {repo.language ? (
@@ -426,7 +414,6 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
           </View>
         )}
 
-        {/* ── Footer ── */}
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
             Generated by GitHub User Analyzer · {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
@@ -440,7 +427,6 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
   )
 }
 
-// ── API handler ───────────────────────────────────────────────────────────────
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const clientIp = getClientIp(req)
   const retryAfter = rateLimiter.check(clientIp)
@@ -454,8 +440,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'username is required' })
   }
 
-  // Re-use the cached profile data if it exists — if not, we'd need a fresh
-  // fetch. For simplicity the frontend passes the data it already has as POST body.
   let userData: UserData | null = null
 
   if (req.method === 'POST') {
@@ -471,24 +455,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     userData = getCached<UserData>(cacheKey)
   }
 
-  if (!userData || !userData.user?.login) {
-    return res.status(404).json({ error: 'Profile data not found. Search for the user first.' })
-  }
-
-  try {
-    const avatarDataUrl = await avatarToDataUrl(userData.user.avatar_url)
-    const element =
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      React.createElement(ResumeDocument, { userData, avatarDataUrl }) as any
-    const buffer = await renderToBuffer(element)
-
-    const safeLogin = userData.user.login.replace(/[^a-zA-Z0-9_-]/g, '')
-    res.setHeader('Content-Type', 'application/pdf')
-    res.setHeader('Content-Disposition', `attachment; filename="${safeLogin}-github-profile.pdf"`)
-    res.setHeader('Content-Length', buffer.length)
-    res.status(200).end(buffer)
-  } catch (err) {
-    console.error('PDF generation error:', err)
-    res.status(500).json({ error: 'Failed to generate PDF' })
-  }
-}
+  if (!userData || !userData.user?.login)
