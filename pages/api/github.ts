@@ -407,6 +407,21 @@ export default async function handler(
           if (err instanceof GraphQLNotFoundError) {
             throw err
           }
+          // Non-"not found" GraphQL failures (rate-limit, transient 5xx, partial
+          // GraphQL/schema errors) previously fell through to REST silently,
+          // degrading token-backed deployments (no heatmap/engagement/productivity)
+          // with nothing in the logs. Keep the graceful REST fallback, but log
+          // with enough context to tell the causes apart.
+          const message = err instanceof Error ? err.message : String(err)
+          const kind = /rate limit|secondary rate|api rate/i.test(message)
+            ? 'rate-limit'
+            : err instanceof GraphQLOtherError
+              ? 'graphql-error'
+              : 'transient'
+          console.error(
+            `[github] GraphQL fetch failed for @${username} [${kind}]; falling back to REST:`,
+            message
+          )
         }
       }
 
