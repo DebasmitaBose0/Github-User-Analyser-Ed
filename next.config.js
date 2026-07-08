@@ -45,13 +45,29 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  generateEtags: true,
+
   async headers() {
     return [
       {
-        // Applies to every route, including the /api/badge/[username] SVG
-        // (nosniff) and all pages (CSP, framing, referrer, permissions).
         source: '/:path*',
-        headers: securityHeaders,
+        headers: [
+          ...securityHeaders,
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store',
+          },
+        ],
       },
     ]
   },

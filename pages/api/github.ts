@@ -374,7 +374,7 @@ export default async function handler(
       contributions: null,
       engagement: null,
       productivity: null,
-      error: 'Username is required',
+      error: 'Invalid username',
       errorType: 'unknown',
     })
   }
