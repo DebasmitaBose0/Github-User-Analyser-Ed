@@ -12,6 +12,7 @@ import ExportPanel from '@/components/ExportPanel'
 import RepoReadmeModal from '@/components/RepoReadmeModal'
 import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
+import ActivityTimeline from '@/components/ActivityTimeline'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
 import LanguageDashboard from '@/components/LanguageDashboard'
@@ -89,8 +90,8 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       </div>
       <UserCard user={user} />
 
-      {/* AI Insights + Export & Share — at the top for quick access */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+      {/* AI Insights + Export & Share + Recent Activity — at the top for quick access */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-12">
         <ErrorBoundary fallback={ErrorFallback}>
           <AiInsightPanel
             user={user}
@@ -101,6 +102,9 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
         </ErrorBoundary>
         <ErrorBoundary fallback={ErrorFallback}>
           <ExportPanel userData={{ user, repos, contributions, engagement, productivity }} />
+        </ErrorBoundary>
+        <ErrorBoundary fallback={ErrorFallback}>
+          <ActivityTimeline username={user.login} />
         </ErrorBoundary>
       </div>
 
