@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { GetServerSideProps } from 'next'
 import { resolveBaseUrl } from '@/lib/siteUrl'
 import { useRouter } from 'next/router'
@@ -10,12 +10,10 @@ import LoadingSkeleton from '@/components/LoadingSkeleton'
 import Footer from '@/components/Footer'
 import ProfileDashboard from '@/components/ProfileDashboard'
 import RateLimitBanner from '@/components/RateLimitBanner'
-import ErrorState from '@/components/ErrorState'
+import ErrorState, { type ErrorType } from '@/components/ErrorState'
 import { fetchUserData } from '@/lib/github'
 import { recordSearch } from '@/lib/searchHistory'
 import type { UserData } from '@/types/github'
-
-type ErrorType = 'not_found' | 'rate_limited' | 'network' | 'unknown'
 
 interface OgMeta {
   title: string
@@ -86,7 +84,7 @@ export default function UserProfilePage({ og }: UserProfilePageProps) {
     }
   }, [router.isReady, username, retryCount])
 
-  const handleRetry = () => setRetryCount((count) => count + 1)
+  const handleRetry = useCallback(() => setRetryCount((count) => count + 1), [])
 
   return (
     <>
