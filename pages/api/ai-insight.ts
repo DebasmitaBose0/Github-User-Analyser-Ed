@@ -15,6 +15,9 @@ interface AiInsightRequestBody {
   currentStreak?: number
   weekdayPct?: number
   weekendPct?: number
+  // Optional parameters to support Phase 2 UI customization
+  tone?: 'Professional' | 'Casual' | 'Tech-Heavy'
+  length?: 'Short' | 'Detailed'
 }
 
 interface AiInsightResponse {
@@ -44,7 +47,20 @@ Current streak: ${body.currentStreak ?? 'unknown'} days
 Weekday vs weekend activity split: ${body.weekdayPct ?? '?'}% weekday / ${body.weekendPct ?? '?'}% weekend`
 
   if (body.type === 'bio') {
-    return `You are writing a short, polished professional bio for a developer's GitHub README, based on the data below. Write 3-4 sentences, highlighting their apparent technical focus and strengths based on the languages and repos listed. Do not invent facts that aren't supported by the data, and don't pad with generic filler. Keep it confident and specific.
+    // Dynamic instructions based on potential frontend toggles
+    const toneInstruction = body.tone ? `Tone: ${body.tone}.` : 'Tone: Confident, engaging, and professional.'
+    const lengthInstruction = body.length === 'Detailed' 
+      ? 'Write a rich, detailed 4-6 sentence paragraph' 
+      : 'Write 3-4 impactful sentences'
+
+    return `You are an expert tech recruiter and developer advocate writing a highly personalized bio for a developer's GitHub README. Based on the data below, ${lengthInstruction.toLowerCase()} that captures the true depth of their profile.
+
+Crucial Instructions:
+- Explicitly name their most impressive or highly-starred repositories from the list.
+- Analyze their top languages to highlight specific frameworks or tech stacks they likely use.
+- Call out their contribution patterns (e.g., impressive streaks, massive yearly contributions, or interesting weekday/weekend habits).
+- ${toneInstruction}
+- Do NOT invent facts or repositories that aren't supported by the data below. Don't pad with generic filler.
 
 ${shared}
 
@@ -57,7 +73,6 @@ ${shared}
 
 Return only the roast text. No preamble, no markdown headers, no quotation marks around it.`
 }
-
 // ---------------------------------------------------------------------------
 // Per-IP fixed-window rate limiter (in-memory).
 //
