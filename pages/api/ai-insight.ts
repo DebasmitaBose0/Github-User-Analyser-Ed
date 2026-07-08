@@ -2,6 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import axios, { type AxiosError } from 'axios'
 import { getClientIp, createRateLimiter } from '@/lib/rateLimit'
 
+// Extend the serverless function timeout to 60 seconds to allow for retries
+export const maxDuration = 60
+
 interface AiInsightRequestBody {
   type: 'bio' | 'roast'
   username: string
@@ -101,32 +104,49 @@ export default async function handler(
   try {
     const prompt = buildPrompt(body)
 
-    const response = await axios.post(
-      GEMINI_URL,
-      {
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: body.type === 'roast' ? 0.9 : 0.6,
-          // Raised from 300 → 1024: gemini-2.5-flash-lite can run internal
-          // reasoning/thinking that counts against maxOutputTokens. A 300-token
-          // budget can be fully consumed by reasoning, leaving the visible text
-          // field empty. 1024 gives ample room for both reasoning and output.
-          maxOutputTokens: 1024,
-          // Disable thinking for this short-output use case: the bio/roast
-          // prompts are deterministic enough that chain-of-thought reasoning
-          // adds latency and token cost without improving the result quality.
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': process.env.GEMINI_API_KEY,
-        },
-      }
-    )
+    let response;
+    let attempt = 0;
+    const MAX_RETRIES = 2;
 
-    const candidate = response.data?.candidates?.[0]
+    // Retry loop to handle intermittent Gemini 503/500 errors
+    while (attempt <= MAX_RETRIES) {
+      try {
+        response = await axios.post(
+          GEMINI_URL,
+          {
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: body.type === 'roast' ? 0.9 : 0.6,
+              maxOutputTokens: 1024,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': process.env.GEMINI_API_KEY,
+            },
+          }
+        )
+        break; // Success! Break out of the retry loop
+      } catch (err: unknown) {
+        const axiosErr = err as AxiosError
+        const status = axiosErr.response?.status
+        
+        // If the AI provider is overloaded, wait and try again
+        if ((status === 503 || status === 500) && attempt < MAX_RETRIES) {
+          attempt++
+          // Exponential backoff: Wait 1s, then 2s before retrying
+          await new Promise((resolve) => setTimeout(resolve, 1000 * attempt))
+          continue
+        }
+        
+        // If we ran out of retries or hit a different error (like 429), throw it
+        throw err
+      }
+    }
+
+    const candidate = response?.data?.candidates?.[0]
     const text = candidate?.content?.parts?.[0]?.text as string | undefined
     const finishReason = candidate?.finishReason as string | undefined
 
