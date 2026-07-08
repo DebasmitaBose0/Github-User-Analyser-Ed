@@ -15,6 +15,7 @@ import PinnedRepos from '@/components/PinnedRepos'
 import ActivityTimeline from '@/components/ActivityTimeline'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
+import RepoHealthDashboard from '@/components/RepoHealthDashboard'
 import LanguageDashboard from '@/components/LanguageDashboard'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
@@ -159,6 +160,10 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
 
       {/* Pinned repositories — the user's curated showcase, above Top Repositories */}
       {pinnedRepos && <PinnedRepos repos={pinnedRepos} onRepoClick={setSelectedRepo} />}
+
+      <ErrorBoundary fallback={ErrorFallback}>
+        <RepoHealthDashboard repos={repos} />
+      </ErrorBoundary>
 
       {/* Repositories */}
       <div className="mt-12">
