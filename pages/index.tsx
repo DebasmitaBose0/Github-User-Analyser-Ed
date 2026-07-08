@@ -9,6 +9,7 @@ import LoadingSkeleton from '@/components/LoadingSkeleton'
 import ThemeToggle from '@/components/ThemeToggle'
 import CompareForm from '@/components/CompareForm'
 import CompareResult from '@/components/CompareResult'
+import RepoCompareTool from '@/components/RepoCompareTool'
 import Footer from '@/components/Footer'
 import { fetchUserData } from '@/lib/github'
 import { loadHistory, clearHistory as clearStoredHistory } from '@/lib/searchHistory'
@@ -203,6 +204,8 @@ export default function Home({ baseUrl }: HomePageProps) {
                     <CompareResult userA={compareUserA} userB={compareUserB} />
                   </div>
                 )}
+
+                <RepoCompareTool />
 
                 {!compareLoading && !compareUserA && !compareUserB && !compareError && (
                   <div className="text-center mt-12 text-gray-500 dark:text-gray-400">
