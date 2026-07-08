@@ -26,6 +26,64 @@ interface AiInsightResponse {
   error?: string
 }
 
+function isAiInsightRequestBody(body: unknown): body is AiInsightRequestBody {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return false
+  }
+
+  const data = body as Record<string, unknown>
+  if (data.type !== 'bio' && data.type !== 'roast') {
+    return false
+  }
+  if (typeof data.username !== 'string') {
+    return false
+  }
+  if (data.bio !== undefined && typeof data.bio !== 'string') {
+    return false
+  }
+  if (!Array.isArray(data.topLanguages) || !data.topLanguages.every((item) => typeof item === 'string')) {
+    return false
+  }
+  if (
+    !Array.isArray(data.topRepos) ||
+    !data.topRepos.every(
+      (repo) =>
+        repo &&
+        typeof repo === 'object' &&
+        typeof (repo as Record<string, unknown>).name === 'string' &&
+        typeof (repo as Record<string, unknown>).description === 'string' &&
+        typeof (repo as Record<string, unknown>).stars === 'number'
+    )
+  ) {
+    return false
+  }
+  if (data.totalContributions !== undefined && typeof data.totalContributions !== 'number') {
+    return false
+  }
+  if (data.currentStreak !== undefined && typeof data.currentStreak !== 'number') {
+    return false
+  }
+  if (data.weekdayPct !== undefined && typeof data.weekdayPct !== 'number') {
+    return false
+  }
+  if (data.weekendPct !== undefined && typeof data.weekendPct !== 'number') {
+    return false
+  }
+  if (
+    data.tone !== undefined &&
+    data.tone !== 'Professional' &&
+    data.tone !== 'Casual' &&
+    data.tone !== 'Tech-Heavy'
+  ) {
+    return false
+  }
+  if (data.length !== undefined && data.length !== 'Short' && data.length !== 'Detailed') {
+    return false
+  }
+
+  return true
+}
+
 // gemini-2.5-flash-lite is the most generous free-tier model as of mid-2026.
 // See https://ai.google.dev/gemini-api/docs/models for current free-tier eligibility.
 const GEMINI_MODEL = 'gemini-2.5-flash-lite'
@@ -120,8 +178,8 @@ export default async function handler(
     })
   }
 
-  const body = req.body as AiInsightRequestBody
-  if (!body || !body.username || (body.type !== 'bio' && body.type !== 'roast')) {
+  const body = req.body
+  if (!isAiInsightRequestBody(body)) {
     return res.status(400).json({ text: null, error: 'Invalid request' })
   }
 
