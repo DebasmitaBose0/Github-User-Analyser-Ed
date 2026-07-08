@@ -86,8 +86,9 @@ interface GraphQLUserResponse {
   }
 }
 
+// FIX 1: Add $from and $to variables to the query definition and pass them to contributionsCollection
 const GRAPHQL_QUERY = `
-  query($username: String!) {
+  query($username: String!, $from: DateTime!, $to: DateTime!) {
     rateLimit {
       limit
       remaining
@@ -107,7 +108,7 @@ const GRAPHQL_QUERY = `
       url
       followers { totalCount }
       following { totalCount }
-      contributionsCollection {
+      contributionsCollection(from: $from, to: $to) {
         totalCommitContributions
         totalIssueContributions
         totalPullRequestContributions
@@ -222,9 +223,21 @@ async function fetchViaGraphQL(username: string): Promise<{
   pinnedRepos: Repository[]
   rateLimit: RateLimitInfo | undefined
 }> {
+  // FIX 2: Calculate a strict 1-year UTC window to prevent timezone drifting
+  const toDate = new Date()
+  const fromDate = new Date()
+  fromDate.setUTCFullYear(toDate.getUTCFullYear() - 1)
+
   const response = await axios.post(
     'https://api.github.com/graphql',
-    { query: GRAPHQL_QUERY, variables: { username } },
+    { 
+      query: GRAPHQL_QUERY, 
+      variables: { 
+        username,
+        from: fromDate.toISOString(),
+        to: toDate.toISOString()
+      } 
+    },
     {
       headers: {
         Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
