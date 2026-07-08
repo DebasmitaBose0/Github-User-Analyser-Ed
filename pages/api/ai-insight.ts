@@ -71,13 +71,19 @@ function isAiInsightRequestBody(body: unknown): body is AiInsightRequestBody {
   }
   if (
     data.tone !== undefined &&
+    typeof data.tone !== 'string' &&
     data.tone !== 'Professional' &&
     data.tone !== 'Casual' &&
     data.tone !== 'Tech-Heavy'
   ) {
     return false
   }
-  if (data.length !== undefined && data.length !== 'Short' && data.length !== 'Detailed') {
+  if (
+    data.length !== undefined &&
+    typeof data.length !== 'string' &&
+    data.length !== 'Short' &&
+    data.length !== 'Detailed'
+  ) {
     return false
   }
 
@@ -115,9 +121,11 @@ Weekday vs weekend activity split: ${body.weekdayPct ?? '?'}% weekday / ${body.w
 
   if (body.type === 'bio') {
     // Dynamic instructions based on potential frontend toggles
-    const toneInstruction = body.tone ? `Tone: ${body.tone}.` : 'Tone: Confident, engaging, and professional.'
-    const lengthInstruction = body.length === 'Detailed' 
-      ? 'Write a rich, detailed 4-6 sentence paragraph' 
+    const tone = typeof body.tone === 'string' ? body.tone : undefined
+    const bioLength = body.length === 'Detailed' ? 'Detailed' : 'Short'
+    const toneInstruction = tone ? `Tone: ${tone}.` : 'Tone: Confident, engaging, and professional.'
+    const lengthInstruction = bioLength === 'Detailed'
+      ? 'Write a rich, detailed 4-6 sentence paragraph'
       : 'Write 3-4 impactful sentences'
 
     return `You are an expert tech recruiter and developer advocate writing a highly personalized bio for a developer's GitHub README. Based on the data below, ${lengthInstruction.toLowerCase()} that captures the true depth of their profile.
