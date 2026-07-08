@@ -14,6 +14,7 @@ import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
+import LanguageDashboard from '@/components/LanguageDashboard'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -121,6 +122,10 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
           </div>
         )}
       </div>
+
+      <ErrorBoundary fallback={ErrorFallback}>
+        <LanguageDashboard repos={repos} />
+      </ErrorBoundary>
 
       {/* Engagement, productivity, achievements — all need the GraphQL token path */}
       {contributions !== null && engagement !== null && productivity !== null ? (
