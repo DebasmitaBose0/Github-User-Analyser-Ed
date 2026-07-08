@@ -14,6 +14,7 @@ import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
+import SharePanel from '@/components/SharePanel'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -89,7 +90,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       <UserCard user={user} />
 
       {/* AI Insights + Export & Share — at the top for quick access */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-12">
         <ErrorBoundary fallback={ErrorFallback}>
           <AiInsightPanel
             user={user}
@@ -100,6 +101,9 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
         </ErrorBoundary>
         <ErrorBoundary fallback={ErrorFallback}>
           <ExportPanel userData={{ user, repos, contributions, engagement, productivity }} />
+        </ErrorBoundary>
+        <ErrorBoundary fallback={ErrorFallback}>
+          <SharePanel user={user} />
         </ErrorBoundary>
       </div>
 
