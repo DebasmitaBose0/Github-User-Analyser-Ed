@@ -14,6 +14,7 @@ import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
+import RepoHealthDashboard from '@/components/RepoHealthDashboard'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -150,6 +151,10 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
 
       {/* Pinned repositories — the user's curated showcase, above Top Repositories */}
       {pinnedRepos && <PinnedRepos repos={pinnedRepos} onRepoClick={setSelectedRepo} />}
+
+      <ErrorBoundary fallback={ErrorFallback}>
+        <RepoHealthDashboard repos={repos} />
+      </ErrorBoundary>
 
       {/* Repositories */}
       <div className="mt-12">
