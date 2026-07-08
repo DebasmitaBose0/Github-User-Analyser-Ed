@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
 const CSP_HEADER = {
   'Content-Security-Policy':
@@ -24,7 +23,7 @@ const SECURITY_HEADERS = {
   'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
 }
 
-export function middleware(request: NextRequest) {
+export function middleware() {
   const response = NextResponse.next()
 
   for (const [key, value] of Object.entries(CSP_HEADER)) {
