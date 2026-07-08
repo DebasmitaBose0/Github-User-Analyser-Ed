@@ -26,5 +26,3 @@ beforeAll(() => {
 afterAll(() => {
   jest.useRealTimers()
 })
-  })
-})
