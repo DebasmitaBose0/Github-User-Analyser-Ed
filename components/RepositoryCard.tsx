@@ -168,12 +168,8 @@ export default function RepositoryCard({ repo, onClick }: RepositoryCardProps) {
               </button>
 
               <RepoHealthAnalysisPanel repo={repo} />
-
-<<<<<<< HEAD
               <CommitActivityButton repo={repo} />
-=======
               <StarHistoryButton repo={repo} />
->>>>>>> origin/dev
 
               <a
                 href={repo.html_url}
