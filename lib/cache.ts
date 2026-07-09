@@ -13,7 +13,8 @@ export async function getCached<T>(key: string): Promise<T | null> {
   try {
     return await redis.get<T>(key)
   } catch (error) {
-    console.error(`Failed to fetch from Redis for key: ${key}`, error)
+    // FIXED: Separated the string from the variable to resolve the CodeQL alert
+    console.error('Failed to fetch from Redis for key:', key, error)
     return null
   }
 }
@@ -25,7 +26,8 @@ export async function setCached<T>(key: string, value: T, ttlMs: number): Promis
     // 'px' tells Redis to expire the key after ttlMs (milliseconds)
     await redis.set(key, value, { px: ttlMs })
   } catch (error) {
-    console.error(`Failed to set Redis cache for key: ${key}`, error)
+    // FIXED: Separated the string from the variable to resolve the CodeQL alert
+    console.error('Failed to set Redis cache for key:', key, error)
   }
 }
 
