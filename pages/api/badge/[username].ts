@@ -175,7 +175,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cacheKey = `badge:${username.toLowerCase()}`
   const notFoundKey = `badge:404:${username.toLowerCase()}`
   
-  // FIXED: Added await here
+ // FIXED: Added await here
   let data = await getCached<BadgeData>(cacheKey)
 
   if (!data) {
