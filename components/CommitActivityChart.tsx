@@ -55,7 +55,7 @@ export default function CommitActivityChart({ data, repoName }: CommitActivityCh
           />
           <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} allowDecimals={false} />
           <Tooltip
-            labelFormatter={(label: number) => formatWeek(label)}
+            labelFormatter={(label) => formatWeek(Number(label))}
             contentStyle={{
               backgroundColor: '#1e293b',
               border: '1px solid #334155',
