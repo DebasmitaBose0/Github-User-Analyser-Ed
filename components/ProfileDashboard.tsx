@@ -12,9 +12,16 @@ import ExportPanel from '@/components/ExportPanel'
 import RepoReadmeModal from '@/components/RepoReadmeModal'
 import RateLimitBadge from '@/components/RateLimitBadge'
 import PinnedRepos from '@/components/PinnedRepos'
+import ActivityTimeline from '@/components/ActivityTimeline'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
+<<<<<<< feature/sponsors-funding
 import SponsorsDisplay from '@/components/SponsorsDisplay'
+=======
+import SharePanel from '@/components/SharePanel'
+import RepoHealthDashboard from '@/components/RepoHealthDashboard'
+import LanguageDashboard from '@/components/LanguageDashboard'
+>>>>>>> dev
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -89,10 +96,15 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       </div>
       <UserCard user={user} />
 
+<<<<<<< feature/sponsors-funding
       <SponsorsDisplay username={user.login} />
 
       {/* AI Insights + Export & Share — at the top for quick access */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
+=======
+      {/* AI Insights + Export + Share + Recent Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-12">
+>>>>>>> dev
         <ErrorBoundary fallback={ErrorFallback}>
           <AiInsightPanel
             user={user}
@@ -101,8 +113,17 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
             productivity={productivity}
           />
         </ErrorBoundary>
+        
         <ErrorBoundary fallback={ErrorFallback}>
           <ExportPanel userData={{ user, repos, contributions, engagement, productivity }} />
+        </ErrorBoundary>
+
+        <ErrorBoundary fallback={ErrorFallback}>
+          <SharePanel user={user} />
+        </ErrorBoundary>
+
+        <ErrorBoundary fallback={ErrorFallback}>
+          <ActivityTimeline username={user.login} />
         </ErrorBoundary>
       </div>
 
@@ -124,6 +145,10 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
           </div>
         )}
       </div>
+
+      <ErrorBoundary fallback={ErrorFallback}>
+        <LanguageDashboard repos={repos} />
+      </ErrorBoundary>
 
       {/* Engagement, productivity, achievements — all need the GraphQL token path */}
       {contributions !== null && engagement !== null && productivity !== null ? (
@@ -153,6 +178,10 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
 
       {/* Pinned repositories — the user's curated showcase, above Top Repositories */}
       {pinnedRepos && <PinnedRepos repos={pinnedRepos} onRepoClick={setSelectedRepo} />}
+
+      <ErrorBoundary fallback={ErrorFallback}>
+        <RepoHealthDashboard repos={repos} />
+      </ErrorBoundary>
 
       {/* Repositories */}
       <div className="mt-12">
