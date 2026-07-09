@@ -160,7 +160,6 @@ function buildSvg(data: BadgeData): string {
   <text x="252" y="109" font-family="system-ui,-apple-system,sans-serif" font-size="11" fill="#64748b">contributions this year</text>
 </svg>`
 }
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username } = req.query
   if (!username || typeof username !== 'string') {
@@ -175,22 +174,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const cacheKey = `badge:${username.toLowerCase()}`
   const notFoundKey = `badge:404:${username.toLowerCase()}`
-  let data = getCached<BadgeData>(cacheKey)
+  
+ // FIXED: Added await here
+  let data = await getCached<BadgeData>(cacheKey)
 
   if (!data) {
     // Short-circuit known-missing usernames so repeated requests for the same
     // invalid user don't keep hitting GitHub.
-    if (getCached<boolean>(notFoundKey)) {
+    
+    // FIXED: Added await here
+    if (await getCached<boolean>(notFoundKey)) {
       return res.status(404).send('User not found')
     }
     try {
       const fetched = await fetchBadgeData(username)
       if (!fetched) {
-        setCached(notFoundKey, true, NEGATIVE_CACHE_TTL_MS)
+        // FIXED: Added await here to ensure Redis finishes writing
+        await setCached(notFoundKey, true, NEGATIVE_CACHE_TTL_MS)
         return res.status(404).send('User not found')
       }
       data = fetched
-      setCached(cacheKey, data, BADGE_CACHE_TTL_MS)
+      // FIXED: Added await here
+      await setCached(cacheKey, data, BADGE_CACHE_TTL_MS)
     } catch {
       return res.status(500).send('Failed to fetch GitHub data')
     }

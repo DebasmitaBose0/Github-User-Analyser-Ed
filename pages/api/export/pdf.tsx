@@ -462,7 +462,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!userData) {
     const cacheKey = `github-profile:${username.toLowerCase()}`
-    userData = getCached<UserData>(cacheKey) ?? null
+    // FIXED: Added await and parentheses to handle the async call properly
+    userData = (await getCached<UserData>(cacheKey)) ?? null
   }
 
   if (!userData || !userData.user?.login) {
