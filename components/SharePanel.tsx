@@ -6,7 +6,6 @@ import {
   copyProfileLink,
   shareNative,
   getShareUrl,
-  getShareText,
 } from '@/lib/sharing'
 import type { GitHubUser } from '@/types/github'
 
