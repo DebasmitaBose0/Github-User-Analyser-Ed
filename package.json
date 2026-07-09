@@ -20,7 +20,7 @@
   "recharts": "^3.9.0",
   "remark-gfm": "^4.0.1",
   "@upstash/redis": "^1.34.0"
-}
+  },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
     "@types/jest": "^29.5.14",
