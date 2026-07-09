@@ -16,6 +16,7 @@ const LEVEL_COLORS = [
 function levelFor(count: number, max: number): number {
   if (count === 0) return 0
   if (max <= 4) return count >= max ? 4 : 3
+
   const ratio = count / max
   if (ratio > 0.75) return 4
   if (ratio > 0.5) return 3
@@ -24,4 +25,60 @@ function levelFor(count: number, max: number): number {
 }
 
 function monthLabel(dateStr: string): string {
-  return
+  const date = new Date(dateStr)
+  return date.toLocaleString('default', { month: 'short', timeZone: 'UTC' })
+}
+
+export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
+  const weeks = data?.weeks ?? []
+  const max = Math.max(
+    0,
+    ...weeks.flatMap((week) => week.contributionDays.map((day) => day.contributionCount))
+  )
+
+  // Show month label only on first week that contains a day from that month
+  const shownMonths = new Set<string>()
+
+  return (
+    <CustomChartContainer title="Contribution Activity">
+      <div className="overflow-x-auto">
+        <div className="inline-flex gap-[2px]">
+          {weeks.map((week, weekIndex) => {
+            const firstDay = week.contributionDays[0]
+            const month = firstDay ? monthLabel(firstDay.date) : ''
+            const showMonth = month && !shownMonths.has(month)
+
+            if (showMonth) shownMonths.add(month)
+
+            return (
+              <div key={weekIndex} className="flex flex-col gap-[2px]">
+                <div className="h-4 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
+                  {showMonth ? month : ''}
+                </div>
+
+                {week.contributionDays.map((day) => {
+                  const level = levelFor(day.contributionCount, max)
+                  return (
+                    <div
+                      key={day.date}
+                      className={`h-3 w-3 rounded-sm ${LEVEL_COLORS[level]}`}
+                      title={`${day.contributionCount} contributions on ${day.date}`}
+                    />
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="mt-3 flex items-center justify-end gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span>Less</span>
+          {LEVEL_COLORS.map((color, idx) => (
+            <div key={idx} className={`h-3 w-3 rounded-sm ${color}`} />
+          ))}
+          <span>More</span>
+        </div>
+      </div>
+    </CustomChartContainer>
+  )
+}
