@@ -15,13 +15,10 @@ import PinnedRepos from '@/components/PinnedRepos'
 import ActivityTimeline from '@/components/ActivityTimeline'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
-<<<<<<< feature/sponsors-funding
 import SponsorsDisplay from '@/components/SponsorsDisplay'
-=======
 import SharePanel from '@/components/SharePanel'
 import RepoHealthDashboard from '@/components/RepoHealthDashboard'
 import LanguageDashboard from '@/components/LanguageDashboard'
->>>>>>> dev
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -96,15 +93,10 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
       </div>
       <UserCard user={user} />
 
-<<<<<<< feature/sponsors-funding
       <SponsorsDisplay username={user.login} />
 
-      {/* AI Insights + Export & Share — at the top for quick access */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
-=======
       {/* AI Insights + Export + Share + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-12">
->>>>>>> dev
         <ErrorBoundary fallback={ErrorFallback}>
           <AiInsightPanel
             user={user}
