@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import type { Repository, CommitActivity } from '@/types/github'
+import type { Repository, CodeFrequency } from '@/types/github'
 import { fetchCommitActivity } from '@/lib/commitActivity'
 import CommitActivityChart from '@/components/CommitActivityChart'
 
@@ -9,7 +9,7 @@ interface CommitActivityButtonProps {
 
 export default function CommitActivityButton({ repo }: CommitActivityButtonProps) {
   const [loading, setLoading] = useState(false)
-  const [data, setData] = useState<CommitActivity[] | null>(null)
+  const [data, setData] = useState<CodeFrequency[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -25,7 +25,7 @@ export default function CommitActivityButton({ repo }: CommitActivityButtonProps
       if ('error' in result) {
         setError((result as { error: string }).error)
       } else {
-        setData(result as CommitActivity[])
+        setData(result as CodeFrequency[])
       }
     } catch {
       setError('Failed to load commit activity')
