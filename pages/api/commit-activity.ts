@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import axios from 'axios'
-import type { CommitActivity } from '@/types/github'
+import type { CodeFrequency } from '@/types/github'
 
 interface ErrorResponse {
   error: string
@@ -9,7 +9,7 @@ interface ErrorResponse {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<CommitActivity[] | ErrorResponse>
+  res: NextApiResponse<CodeFrequency[] | ErrorResponse>
 ) {
   const { owner, repo } = req.query
 
@@ -45,7 +45,7 @@ export default async function handler(
 
     const raw = response.data as [number, number, number][]
 
-    const activities: CommitActivity[] = raw.map(([week, additions, deletions]) => ({
+    const activities: CodeFrequency[] = raw.map(([week, additions, deletions]) => ({
       week: week * 1000,
       additions,
       deletions,

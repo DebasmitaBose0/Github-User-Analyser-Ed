@@ -9,10 +9,10 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import type { CommitActivity } from '@/types/github'
+import type { CodeFrequency } from '@/types/github'
 
 interface CommitActivityChartProps {
-  data: CommitActivity[]
+  data: CodeFrequency[]
   repoName: string
 }
 
@@ -25,7 +25,7 @@ export default function CommitActivityChart({ data, repoName }: CommitActivityCh
   const chartData = useMemo(() => {
     if (data.length > 52) {
       const step = Math.floor(data.length / 52)
-      const sampled: CommitActivity[] = []
+      const sampled: CodeFrequency[] = []
       for (let i = 0; i < data.length; i += step) {
         sampled.push(data[i])
       }
