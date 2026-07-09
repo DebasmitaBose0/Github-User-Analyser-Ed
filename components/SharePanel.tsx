@@ -27,6 +27,9 @@ export default function SharePanel({ user }: SharePanelProps) {
   const btnClass =
     'flex-1 px-3 py-2 text-xs font-medium rounded-lg border transition-colors text-center'
 
+  const canShare =
+    typeof navigator !== 'undefined' && 'share' in navigator
+
   return (
     <div className="bg-white dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-lg p-6 mt-6">
       <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Share Profile</h3>
@@ -36,7 +39,7 @@ export default function SharePanel({ user }: SharePanelProps) {
 
       {/* Native share button (mobile) + copy link */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {typeof navigator !== 'undefined' && navigator.share && (
+        {canShare && (
           <button
             type="button"
             onClick={() => shareNative(user.login, user.name)}
