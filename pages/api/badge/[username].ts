@@ -175,7 +175,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const cacheKey = `badge:${username.toLowerCase()}`
   const notFoundKey = `badge:404:${username.toLowerCase()}`
   
- // FIXED: Added await here
   let data = await getCached<BadgeData>(cacheKey)
 
   if (!data) {
@@ -194,7 +193,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(404).send('User not found')
       }
       data = fetched
-      // FIXED: Added await here
+      
+      // Added await so the cache write completes before the serverless function exits.
       await setCached(cacheKey, data, BADGE_CACHE_TTL_MS)
     } catch {
       return res.status(500).send('Failed to fetch GitHub data')
