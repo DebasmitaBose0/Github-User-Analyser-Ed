@@ -15,7 +15,7 @@ import type { UserData } from '@/types/github'
 import { getCached } from '@/lib/cache'
 import { getClientIp, createRateLimiter } from '@/lib/rateLimit'
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ─── Styles ─────────────────────────────────────────────────────────────
 
 const BLUE = '#2563eb'
 const DARK = '#0f172a'
@@ -50,7 +50,6 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     marginRight: 18,
-    // Fix 1: Replaced unsupported border shorthand with explicit properties
     borderWidth: 3,
     borderStyle: 'solid',
     borderColor: BLUE,
@@ -61,12 +60,11 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     color: DARK,
     marginBottom: 2,
-    // Fix 2: Explicit line-height prevents bounding-box collision
     lineHeight: 1.2,
   },
-  username: { 
-    fontSize: 12, 
-    color: BLUE, 
+  username: {
+    fontSize: 12,
+    color: BLUE,
     marginBottom: 6,
     lineHeight: 1.2,
   },
@@ -165,7 +163,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   repoDesc: { fontSize: 9, color: MID, marginBottom: 4, lineHeight: 1.4 },
-  // Fix 4: Add flexWrap so stats don't merge into one unreadable line
   repoStats: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   repoStat: { fontSize: 8, color: LIGHT },
 
@@ -189,7 +186,8 @@ const styles = StyleSheet.create({
   footerBadgeText: { fontSize: 8, color: WHITE, fontFamily: 'Helvetica-Bold' },
 })
 
-// ── Language colour map (keep in sync with languageColors.ts) ─────────────────
+// ── Language colour map (keep in sync with languageColors.ts) ──────────
+
 const LANG_COLORS: Record<string, string> = {
   JavaScript: '#eab308',
   TypeScript: '#2563eb',
@@ -222,7 +220,6 @@ async function avatarToDataUrl(url: string): Promise<string | null> {
   if (!isAllowedAvatarUrl(url)) return null
   try {
     const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 5000 })
-    // Fix 1b: Dynamically apply the correct content-type for PNG/WebP avatars
     const contentType = response.headers['content-type'] || 'image/jpeg'
     const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64')
     return `data:${contentType};base64,${base64}`
@@ -288,7 +285,9 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
               ) : null}
               {user.blog ? (
                 <View style={styles.contactItem}>
-                  <Link style={styles.contactLink} src={user.blog}>{user.blog}</Link>
+                  <Link style={styles.contactLink} src={user.blog}>
+                    {user.blog}
+                  </Link>
                 </View>
               ) : null}
               {user.twitter_username ? (
@@ -299,7 +298,9 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
                 </View>
               ) : null}
               <View style={styles.contactItem}>
-                <Link style={styles.contactLink} src={user.html_url}>{user.html_url}</Link>
+                <Link style={styles.contactLink} src={user.html_url}>
+                  {user.html_url}
+                </Link>
               </View>
               <View style={styles.contactItem}>
                 <Text style={styles.contactText}>Joined {joinDate}</Text>
@@ -333,7 +334,6 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
           ) : null}
         </View>
 
-        {/* Fix 3: Add wrap={false} to block-level sections to prevent bad page breaks */}
         {topLangs.length > 0 && (
           <View style={styles.section} wrap={false}>
             <View style={styles.sectionHeader}>
@@ -344,7 +344,9 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
               {topLangs.map(([lang, count]) => (
                 <View key={lang} style={styles.langPill}>
                   <View style={[styles.langDot, { backgroundColor: LANG_COLORS[lang] || '#94a3b8' }]} />
-                  <Text style={styles.langText}>{lang} ({count})</Text>
+                  <Text style={styles.langText}>
+                    {lang} ({count})
+                  </Text>
                 </View>
               ))}
             </View>
@@ -391,14 +393,12 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
             {topRepos.map((repo) => (
               <View key={repo.name} style={styles.repoEntry} wrap={false}>
                 <View style={styles.repoTop}>
-                  <Link src={repo.html_url} style={styles.repoName}>{repo.name}</Link>
-                  {repo.language ? (
-                    <Text style={styles.repoLang}>{repo.language}</Text>
-                  ) : null}
+                  <Link src={repo.html_url} style={styles.repoName}>
+                    {repo.name}
+                  </Link>
+                  {repo.language ? <Text style={styles.repoLang}>{repo.language}</Text> : null}
                 </View>
-                {repo.description ? (
-                  <Text style={styles.repoDesc}>{repo.description}</Text>
-                ) : null}
+                {repo.description ? <Text style={styles.repoDesc}>{repo.description}</Text> : null}
                 <View style={styles.repoStats}>
                   <Text style={styles.repoStat}>★ {repo.stargazers_count} stars</Text>
                   <Text style={styles.repoStat}>⑂ {repo.forks_count} forks</Text>
@@ -406,7 +406,11 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
                     <Text style={styles.repoStat}>◎ {repo.open_issues_count} open issues</Text>
                   )}
                   <Text style={styles.repoStat}>
-                    Updated {new Date(repo.updated_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    Updated{' '}
+                    {new Date(repo.updated_at).toLocaleDateString('en-US', {
+                      month: 'short',
+                      year: 'numeric',
+                    })}
                   </Text>
                 </View>
               </View>
@@ -416,7 +420,8 @@ function ResumeDocument({ userData, avatarDataUrl }: ResumeDocProps) {
 
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>
-            Generated by GitHub User Analyzer · {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            Generated by GitHub User Analyzer ·{' '}
+            {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </Text>
           <View style={styles.footerBadge}>
             <Text style={styles.footerBadgeText}>github-user-analyser.vercel.app</Text>
@@ -432,7 +437,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const retryAfter = rateLimiter.check(clientIp)
   if (retryAfter !== null) {
     res.setHeader('Retry-After', String(retryAfter))
-    return res.status(429).json({ error: `Too many requests \u2014 please wait ${retryAfter}s and try again` })
+    return res.status(429).json({ error: `Too many requests — please wait ${retryAfter}s and try again` })
+  }
+
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', 'GET, POST')
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   const { username } = req.query
@@ -452,7 +462,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (!userData) {
     const cacheKey = `github-profile:${username.toLowerCase()}`
-    userData = getCached<UserData>(cacheKey)
+    userData = getCached<UserData>(cacheKey) ?? null
   }
 
-  if (!userData || !userData.user?.login)
+  if (!userData || !userData.user?.login) {
+    return res.status(404).json({ error: 'User data not found. Please analyze the user first.' })
+  }
+
+  try {
+    const avatarDataUrl = await avatarToDataUrl(userData.user.avatar_url)
+    const pdfBuffer = await renderToBuffer(
+      <ResumeDocument userData={userData} avatarDataUrl={avatarDataUrl} />
+    )
+
+    const safeLogin = userData.user.login.replace(/[^a-zA-Z0-9-_]/g, '')
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Disposition', `attachment; filename="${safeLogin || 'github-user'}-profile.pdf"`)
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(200).send(pdfBuffer)
+  } catch (error) {
+    console.error('PDF generation failed:', error)
+    return res.status(500).json({ error: 'Failed to generate PDF' })
+  }
+}
