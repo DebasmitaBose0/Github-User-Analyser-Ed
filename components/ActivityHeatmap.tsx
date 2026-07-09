@@ -33,7 +33,8 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const weeks = data?.weeks ?? []
   const max = Math.max(
     0,
-    ...weeks.flatMap((week) => week.contributionDays.map((day) => day.contributionCount))
+    // FIXED 1: Changed day.contributionCount to day.count
+    ...weeks.flatMap((week) => week.contributionDays.map((day) => day.count))
   )
 
   // Show month label only on first week that contains a day from that month
@@ -57,12 +58,14 @@ export default function ActivityHeatmap({ data }: ActivityHeatmapProps) {
                 </div>
 
                 {week.contributionDays.map((day) => {
-                  const level = levelFor(day.contributionCount, max)
+                  // FIXED 2: Changed day.contributionCount to day.count
+                  const level = levelFor(day.count, max)
                   return (
                     <div
                       key={day.date}
                       className={`h-3 w-3 rounded-sm ${LEVEL_COLORS[level]}`}
-                      title={`${day.contributionCount} contributions on ${day.date}`}
+                      // FIXED 3: Changed day.contributionCount to day.count
+                      title={`${day.count} contributions on ${day.date}`}
                     />
                   )
                 })}
