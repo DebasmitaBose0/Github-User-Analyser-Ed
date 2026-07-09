@@ -3,6 +3,7 @@ import type { Repository } from '@/types/github'
 import { getLanguageColorClass } from '@/lib/languageColors'
 import RepoHealthAnalysisPanel from '@/components/RepoHealthAnalysisPanel'
 import CommitActivityButton from '@/components/CommitActivityButton'
+import StarHistoryButton from '@/components/StarHistoryButton'
 
 interface RepositoryCardProps {
   repo: Repository
@@ -168,7 +169,11 @@ export default function RepositoryCard({ repo, onClick }: RepositoryCardProps) {
 
               <RepoHealthAnalysisPanel repo={repo} />
 
+<<<<<<< HEAD
               <CommitActivityButton repo={repo} />
+=======
+              <StarHistoryButton repo={repo} />
+>>>>>>> origin/dev
 
               <a
                 href={repo.html_url}
