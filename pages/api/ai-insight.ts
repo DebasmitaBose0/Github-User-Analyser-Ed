@@ -231,6 +231,16 @@ export default async function handler(
   }
 
   const rawBody = req.body
+
+  // Reject obviously-incorrect shapes early (strings or arrays) so the
+  // subsequent validation and property accesses cannot be tricked by a
+  // tampered `req.body` that is a string or array. This explicit runtime
+  // guard addresses CodeQL's "type confusion through parameter tampering"
+  // pattern.
+  if (typeof rawBody === 'string' || Array.isArray(rawBody) || rawBody === null) {
+    return res.status(400).json({ text: null, error: 'Invalid request' })
+  }
+
   if (!isAiInsightRequestBody(rawBody)) {
     return res.status(400).json({ text: null, error: 'Invalid request' })
   }
