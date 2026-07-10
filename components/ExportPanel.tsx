@@ -1,6 +1,14 @@
 import { useState } from 'react'
 import type { UserData } from '@/types/github'
-import { formatAsJSON } from '@/lib/exportDataFormatter'
+import { formatAsJSON, ALL_EXPORT_SECTIONS, type ExportSection } from '@/lib/exportDataFormatter'
+
+const SECTION_LABELS: Record<ExportSection, string> = {
+  profile: 'Profile',
+  repositories: 'Repositories',
+  contributions: 'Contributions',
+  engagement: 'Engagement',
+  productivity: 'Productivity',
+}
 
 interface ExportButtonProps {
   userData: UserData
@@ -12,6 +20,14 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
   const [pdfError, setPdfError] = useState('')
   const [csvError, setCsvError] = useState('')
   const [jsonError, setJsonError] = useState('')
+  const [selectedSections, setSelectedSections] =
+    useState<ExportSection[]>(ALL_EXPORT_SECTIONS)
+
+  const toggleSection = (section: ExportSection) => {
+    setSelectedSections((prev) =>
+      prev.includes(section) ? prev.filter((s) => s !== section) : [...prev, section]
+    )
+  }
   const [showBadge, setShowBadge] = useState(false)
   const [badgeCopied, setBadgeCopied] = useState(false)
 
@@ -91,7 +107,7 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
   const handleDownloadJson = () => {
     setJsonError('')
     try {
-      const jsonStr = formatAsJSON(userData)
+      const jsonStr = formatAsJSON(userData, selectedSections)
       const blob = new Blob([jsonStr], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -156,7 +172,8 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
         <div className="flex flex-col gap-1">
           <button
             onClick={handleDownloadJson}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+            disabled={selectedSections.length === 0}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
           >
             Export Raw JSON
           </button>
@@ -172,6 +189,29 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
         >
           {showBadge ? 'Hide Badge' : 'Get README Badge'}
         </button>
+      </div>
+
+      {/* Section selection for the JSON export */}
+      <div className="mt-4">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          Sections to include in the JSON export:
+        </p>
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {ALL_EXPORT_SECTIONS.map((section) => (
+            <label
+              key={section}
+              className="flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-200 cursor-pointer select-none"
+            >
+              <input
+                type="checkbox"
+                checked={selectedSections.includes(section)}
+                onChange={() => toggleSection(section)}
+                className="rounded border-gray-300 dark:border-slate-500 text-amber-600 focus:ring-amber-500"
+              />
+              {SECTION_LABELS[section]}
+            </label>
+          ))}
+        </div>
       </div>
 
       {showBadge && (
