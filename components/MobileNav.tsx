@@ -1,13 +1,11 @@
 import { useEffect } from 'react'
-import Link from 'next/link'
 
 interface MobileNavProps {
   isOpen: boolean
   onClose: () => void
-  username?: string
 }
 
-export default function MobileNav({ isOpen, onClose, username }: MobileNavProps) {
+export default function MobileNav({ isOpen, onClose }: MobileNavProps) {
   useEffect(() => {
     if (!isOpen) {
       document.body.style.overflow = ''

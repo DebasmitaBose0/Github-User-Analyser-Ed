@@ -181,7 +181,7 @@ export default function UserProfilePage({ og }: UserProfilePageProps) {
               </div>
             </div>
 
-            <MobileNav isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} username={username || undefined} />
+            <MobileNav isOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
             {loading && (
               <div className="mt-12">
