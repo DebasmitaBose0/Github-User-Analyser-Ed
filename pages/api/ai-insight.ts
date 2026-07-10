@@ -7,15 +7,17 @@ import { sanitizeUsername } from '@/lib/securitySanitizer'
 export const maxDuration = 60
 
 interface AiInsightRequestBody {
-  type: 'bio' | 'roast'
+  type: 'bio' | 'roast' | 'consistency'
   username: string
   bio?: string
   topLanguages: string[]
   topRepos: { name: string; description: string; stars: number }[]
   totalContributions?: number
   currentStreak?: number
+  longestStreak?: number
   weekdayPct?: number
   weekendPct?: number
+  mostProductiveDay?: string
   // Optional parameters to support Phase 2 UI customization
   tone?: 'Professional' | 'Casual' | 'Tech-Heavy'
   length?: 'Short' | 'Detailed'
@@ -32,7 +34,7 @@ function isAiInsightRequestBody(body: unknown): body is AiInsightRequestBody {
   }
 
   const data = body as Record<string, unknown>
-  if (data.type !== 'bio' && data.type !== 'roast') {
+  if (data.type !== 'bio' && data.type !== 'roast' && data.type !== 'consistency') {
     return false
   }
   if (typeof data.username !== 'string') {
@@ -63,10 +65,16 @@ function isAiInsightRequestBody(body: unknown): body is AiInsightRequestBody {
   if (data.currentStreak !== undefined && typeof data.currentStreak !== 'number') {
     return false
   }
+  if (data.longestStreak !== undefined && typeof data.longestStreak !== 'number') {
+    return false
+  }
   if (data.weekdayPct !== undefined && typeof data.weekdayPct !== 'number') {
     return false
   }
   if (data.weekendPct !== undefined && typeof data.weekendPct !== 'number') {
+    return false
+  }
+  if (data.mostProductiveDay !== undefined && typeof data.mostProductiveDay !== 'string') {
     return false
   }
   if (
@@ -116,7 +124,9 @@ Top repositories:
 ${repoList}
 Total contributions (last year): ${body.totalContributions ?? 'unknown'}
 Current streak: ${body.currentStreak ?? 'unknown'} days
+Longest streak: ${body.longestStreak ?? 'unknown'} days
 Weekday vs weekend activity split: ${body.weekdayPct ?? '?'}% weekday / ${body.weekendPct ?? '?'}% weekend
+Most productive day: ${body.mostProductiveDay ?? 'unknown'}
 </profile_data>`
 
   if (body.type === 'bio') {
@@ -140,6 +150,29 @@ Crucial Instructions:
 ${shared}
 
 Return only the bio text. No preamble, no markdown headers, no quotation marks around it.`
+  }
+
+  if (body.type === 'consistency') {
+    const tone = typeof body.tone === 'string' ? body.tone : undefined
+    const insightLength = body.length === 'Detailed' ? 'Detailed' : 'Short'
+    const toneInstruction = tone ? `Tone: ${tone}.` : 'Tone: Encouraging and constructive.'
+    const lengthInstruction =
+      insightLength === 'Detailed'
+        ? 'Write a detailed 4-6 sentence analysis'
+        : 'Write a focused 3-4 sentence analysis'
+
+    return `You are a developer productivity coach analyzing a developer's contribution consistency and activity patterns, based on the data below. ${lengthInstruction} of how consistent and sustainable their activity looks.
+
+Crucial Instructions:
+- Focus on their contribution cadence: current and longest streaks, weekday vs weekend balance, most productive day, and overall regularity.
+- Point out what is working (e.g. strong streaks, a balanced schedule) and gently flag any signs of burnout risk or irregular patterns.
+- Keep it actionable and supportive — this is about building sustainable habits, not judgment.
+- ${toneInstruction}
+- Do NOT invent facts or numbers that aren't supported by the data below.
+
+${shared}
+
+Return only the analysis text. No preamble, no markdown headers, no quotation marks around it.`
   }
 
   return `You are writing a short, PLAYFUL, good-natured "roast or toast" of a developer's GitHub activity, based on the data below. Keep it affectionate teasing at most, like a friend ribbing them, never genuinely insulting, never comment on their intelligence or worth as a person or professional. Base every joke only on the observable patterns below (commit timing habits, language choices, repo names, streaks). Don't invent facts. 2-4 short sentences, end on a warm note.
