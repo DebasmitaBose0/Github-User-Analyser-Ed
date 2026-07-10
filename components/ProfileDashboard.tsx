@@ -1,9 +1,6 @@
 import { useMemo, useState, useEffect } from 'react'
 import UserCard from '@/components/UserCard'
-import RepositoryCard from '@/components/RepositoryCard'
-import LanguageChart from '@/components/LanguageChart'
 import ActivityHeatmap from '@/components/ActivityHeatmap'
-import SortFilterBar from '@/components/SortFilterBar'
 import EngagementStats from '@/components/EngagementStats'
 import ProductivityPanel from '@/components/ProductivityPanel'
 import AchievementsPanel from '@/components/AchievementsPanel'
@@ -11,13 +8,13 @@ import AiInsightPanel from '@/components/AiInsightPanel'
 import ExportPanel from '@/components/ExportPanel'
 import RepoReadmeModal from '@/components/RepoReadmeModal'
 import RateLimitBadge from '@/components/RateLimitBadge'
-import PinnedRepos from '@/components/PinnedRepos'
 import ActivityTimeline from '@/components/ActivityTimeline'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import ErrorFallback from '@/components/ErrorFallback'
 import SponsorsDisplay from '@/components/SponsorsDisplay'
 import RepoHealthDashboard from '@/components/RepoHealthDashboard'
-import LanguageDashboard from '@/components/LanguageDashboard'
+import TechStackSection from '@/components/TechStackSection'
+import RepoListSection from '@/components/RepoListSection'
 import type { Repository, SortOption, UserData } from '@/types/github'
 import {
   aggregateLanguagesByBytes,
@@ -169,20 +166,7 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
           </div>
         </section>
 
-        <section id="techstack" className="scroll-mt-24">
-          <div className="flex items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Techstack</h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ErrorBoundary fallback={ErrorFallback}>
-              <LanguageChart data={pieData} mode={usingByteData ? 'bytes' : 'count'} />
-            </ErrorBoundary>
-            <ErrorBoundary fallback={ErrorFallback}>
-              <LanguageDashboard repos={repos} />
-            </ErrorBoundary>
-          </div>
-        </section>
+        <TechStackSection repos={repos} pieData={pieData} usingByteData={usingByteData} />
 
         <section id="repo-health" className="scroll-mt-24">
           <div className="flex items-center mb-6">
@@ -194,50 +178,19 @@ export default function ProfileDashboard({ data }: ProfileDashboardProps) {
           </ErrorBoundary>
         </section>
 
-        <section id="repositories" className="scroll-mt-24">
-          <div className="flex items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Repositories</h2>
-          </div>
-
-          {pinnedRepos && (
-            <div className="mb-8">
-              <PinnedRepos repos={pinnedRepos} onRepoClick={setSelectedRepo} />
-            </div>
-          )}
-
-          <div className="mt-12">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Top Repositories</h3>
-
-            {repos.length > 0 ? (
-              <>
-                <SortFilterBar
-                  sortBy={sortBy}
-                  onSortChange={setSortBy}
-                  languages={languageCounts}
-                  activeLanguages={languageFilter}
-                  onLanguagesChange={setLanguageFilter}
-                  repoQuery={repoQuery}
-                  onRepoQueryChange={setRepoQuery}
-                />
-                {displayedRepos.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayedRepos.map((repo) => (
-                      <RepositoryCard
-                        key={repo.name}
-                        repo={repo}
-                        onClick={() => setSelectedRepo(repo)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400">No repositories match this filter</p>
-                )}
-              </>
-            ) : (
-              <p className="text-gray-500 dark:text-gray-400">No repositories found</p>
-            )}
-          </div>
-        </section>
+        <RepoListSection
+          repos={repos}
+          pinnedRepos={pinnedRepos}
+          displayedRepos={displayedRepos}
+          languageCounts={languageCounts}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          languageFilter={languageFilter}
+          onLanguagesChange={setLanguageFilter}
+          repoQuery={repoQuery}
+          onRepoQueryChange={setRepoQuery}
+          onRepoClick={setSelectedRepo}
+        />
       </div>
 
       {selectedRepo && (
