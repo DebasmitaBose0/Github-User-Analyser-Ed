@@ -10,6 +10,8 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
   const [pdfLoading, setPdfLoading] = useState(false)
   const [csvLoading, setCsvLoading] = useState(false)
   const [pdfError, setPdfError] = useState('')
+  const [csvError, setCsvError] = useState('')
+  const [jsonError, setJsonError] = useState('')
   const [showBadge, setShowBadge] = useState(false)
   const [badgeCopied, setBadgeCopied] = useState(false)
 
@@ -57,7 +59,7 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
 
   const handleDownloadCsv = async () => {
     setCsvLoading(true)
-    setPdfError('')
+    setCsvError('')
 
     try {
       const response = await fetch('/api/export/csv', {
@@ -80,13 +82,14 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch (err) {
-      setPdfError(err instanceof Error ? err.message : 'Failed to generate CSV')
+      setCsvError(err instanceof Error ? err.message : 'Failed to generate CSV')
     } finally {
       setCsvLoading(false)
     }
   }
 
   const handleDownloadJson = () => {
+    setJsonError('')
     try {
       const jsonStr = formatAsJSON(userData)
       const blob = new Blob([jsonStr], { type: 'application/json' })
@@ -99,7 +102,7 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     } catch {
-      setPdfError('Failed to generate JSON')
+      setJsonError('Failed to generate JSON')
     }
   }
 
@@ -120,32 +123,47 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
         Download a resume PDF of this profile, export repository lists as CSV, or obtain complete JSON metadata.
       </p>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-start gap-3">
         {/* PDF Download */}
-        <button
-          onClick={handleDownloadPdf}
-          disabled={pdfLoading}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
-        >
-          {pdfLoading ? 'Generating PDF...' : 'Download Resume PDF'}
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={handleDownloadPdf}
+            disabled={pdfLoading}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg transition-colors"
+          >
+            {pdfLoading ? 'Generating PDF...' : 'Download Resume PDF'}
+          </button>
+          {pdfError && (
+            <p className="text-xs text-red-600 dark:text-red-400 max-w-[14rem]">{pdfError}</p>
+          )}
+        </div>
 
         {/* CSV Download */}
-        <button
-          onClick={handleDownloadCsv}
-          disabled={csvLoading}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg transition-colors"
-        >
-          {csvLoading ? 'Generating CSV...' : 'Export Repos CSV'}
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={handleDownloadCsv}
+            disabled={csvLoading}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white rounded-lg transition-colors"
+          >
+            {csvLoading ? 'Generating CSV...' : 'Export Repos CSV'}
+          </button>
+          {csvError && (
+            <p className="text-xs text-red-600 dark:text-red-400 max-w-[14rem]">{csvError}</p>
+          )}
+        </div>
 
         {/* JSON Export */}
-        <button
-          onClick={handleDownloadJson}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
-        >
-          Export Raw JSON
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={handleDownloadJson}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+          >
+            Export Raw JSON
+          </button>
+          {jsonError && (
+            <p className="text-xs text-red-600 dark:text-red-400 max-w-[14rem]">{jsonError}</p>
+          )}
+        </div>
 
         {/* Badge toggle */}
         <button
@@ -155,10 +173,6 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
           {showBadge ? 'Hide Badge' : 'Get README Badge'}
         </button>
       </div>
-
-      {pdfError && (
-        <p className="mt-3 text-sm text-red-600 dark:text-red-400">{pdfError}</p>
-      )}
 
       {showBadge && (
         <div className="mt-4 space-y-3">
