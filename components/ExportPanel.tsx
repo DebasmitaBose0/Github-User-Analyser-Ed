@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { UserData } from '@/types/github'
-import { formatAsJSON, ALL_EXPORT_SECTIONS, type ExportSection } from '@/lib/exportDataFormatter'
+import { formatAsJSON, formatAsMarkdown, ALL_EXPORT_SECTIONS, type ExportSection } from '@/lib/exportDataFormatter'
 
 const SECTION_LABELS: Record<ExportSection, string> = {
   profile: 'Profile',
@@ -20,6 +20,7 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
   const [pdfError, setPdfError] = useState('')
   const [csvError, setCsvError] = useState('')
   const [jsonError, setJsonError] = useState('')
+  const [mdError, setMdError] = useState('')
   const [selectedSections, setSelectedSections] =
     useState<ExportSection[]>(ALL_EXPORT_SECTIONS)
 
@@ -122,6 +123,24 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
     }
   }
 
+  const handleDownloadMarkdown = () => {
+    setMdError('')
+    try {
+      const md = formatAsMarkdown(userData)
+      const blob = new Blob([md], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${login}-profile.md`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      setMdError('Failed to generate Markdown')
+    }
+  }
+
   const handleCopyBadge = async () => {
     try {
       await navigator.clipboard.writeText(badgeMarkdown)
@@ -179,6 +198,19 @@ export default function ExportPanel({ userData }: ExportButtonProps) {
           </button>
           {jsonError && (
             <p className="text-xs text-red-600 dark:text-red-400 max-w-[14rem]">{jsonError}</p>
+          )}
+        </div>
+
+        {/* Markdown Export */}
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={handleDownloadMarkdown}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-violet-600 hover:bg-violet-700 text-white rounded-lg transition-colors"
+          >
+            Export Markdown
+          </button>
+          {mdError && (
+            <p className="text-xs text-red-600 dark:text-red-400 max-w-[14rem]">{mdError}</p>
           )}
         </div>
 
