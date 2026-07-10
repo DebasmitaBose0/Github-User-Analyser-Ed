@@ -34,6 +34,9 @@ function isAiInsightRequestBody(body: unknown): body is AiInsightRequestBody {
   }
 
   const data = body as Record<string, unknown>
+  if (typeof data.type !== 'string') {
+    return false
+  }
   if (data.type !== 'bio' && data.type !== 'roast' && data.type !== 'consistency') {
     return false
   }
