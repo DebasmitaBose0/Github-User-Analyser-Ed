@@ -234,7 +234,9 @@ export const getServerSideProps: GetServerSideProps<UserProfilePageProps> = asyn
     title,
     description,
     url: baseUrl ? `${baseUrl}/${encodeURIComponent(username)}` : `/${username}`,
-    image: baseUrl ? `${baseUrl}/og-default.png` : '/og-default.png',
+    image: baseUrl
+      ? `${baseUrl}/api/og/${encodeURIComponent(username)}`
+      : `/api/og/${encodeURIComponent(username)}`,
   }
 
   return { props: { og } }
