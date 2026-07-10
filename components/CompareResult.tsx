@@ -1,5 +1,6 @@
 import type { UserData } from '@/types/github'
 import CompareScoreCard from './CompareScoreCard'
+import CompareLanguages from './CompareLanguages'
 
 interface CompareResultProps {
   userA: UserData
@@ -117,6 +118,8 @@ export default function CompareResult({ userA, userB }: CompareResultProps) {
       {metrics.map((m) => (
         <MetricBar key={m.label} label={m.label} a={m.a} b={m.b} />
       ))}
+
+      <CompareLanguages userA={userA} userB={userB} />
 
       <CompareScoreCard userA={userA} userB={userB} />
     </div>
