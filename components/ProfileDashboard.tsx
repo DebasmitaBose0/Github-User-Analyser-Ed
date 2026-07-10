@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useState } from 'react'
 import UserCard from '@/components/UserCard'
 import ActivityHeatmap from '@/components/ActivityHeatmap'
 import EngagementStats from '@/components/EngagementStats'
@@ -15,12 +15,8 @@ import SponsorsDisplay from '@/components/SponsorsDisplay'
 import RepoHealthDashboard from '@/components/RepoHealthDashboard'
 import TechStackSection from '@/components/TechStackSection'
 import RepoListSection from '@/components/RepoListSection'
-import type { Repository, SortOption, UserData } from '@/types/github'
-import {
-  aggregateLanguagesByBytes,
-  aggregateLanguagesByCount,
-  hasByteLanguageData,
-} from '@/lib/repoStats'
+import type { Repository, UserData } from '@/types/github'
+import { useRepoDashboard } from '@/hooks/useRepoDashboard'
 
 interface ProfileDashboardProps {
   data: UserData
@@ -35,50 +31,20 @@ interface ProfileDashboardProps {
 export default function ProfileDashboard({ data }: ProfileDashboardProps) {
   const { user, repos, contributions, engagement, productivity, pinnedRepos, rateLimit } = data
 
-  const [sortBy, setSortBy] = useState<SortOption>('stars')
-  const [languageFilter, setLanguageFilter] = useState<string[]>([])
+  const {
+    sortBy,
+    setSortBy,
+    languageFilter,
+    setLanguageFilter,
+    repoQuery,
+    setRepoQuery,
+    languageCounts,
+    usingByteData,
+    pieData,
+    displayedRepos,
+  } = useRepoDashboard(data)
+
   const [selectedRepo, setSelectedRepo] = useState<Repository | null>(null)
-  const [repoQuery, setRepoQuery] = useState('')
-
-  // Clear the repo name search when navigating to a different profile.
-  useEffect(() => {
-    setRepoQuery('')
-  }, [user.login])
-
-  // Language counts across ALL repos — always available, used for filter pills
-  const languageCounts = useMemo(() => aggregateLanguagesByCount(repos), [repos])
-
-  // Byte-accurate distribution when available (GraphQL path), otherwise fall
-  // back to repo-count based percentages so the chart still renders.
-  const byteDistribution = useMemo(() => aggregateLanguagesByBytes(repos), [repos])
-  const usingByteData = useMemo(() => hasByteLanguageData(repos), [repos])
-
-  const pieData = useMemo(() => {
-    if (usingByteData) return byteDistribution
-    return languageCounts.map(({ name, count }) => ({ name, value: count }))
-  }, [usingByteData, byteDistribution, languageCounts])
-
-  const displayedRepos = useMemo(() => {
-    let filtered = repos
-    if (languageFilter.length > 0) {
-      filtered = repos.filter((repo) => repo.language && languageFilter.includes(repo.language))
-    }
-
-    const q = repoQuery.trim().toLowerCase()
-    if (q) {
-      filtered = filtered.filter((repo) => repo.name.toLowerCase().includes(q))
-    }
-
-    const sorted = [...filtered]
-    if (sortBy === 'stars') {
-      sorted.sort((a, b) => b.stargazers_count - a.stargazers_count)
-    } else if (sortBy === 'forks') {
-      sorted.sort((a, b) => b.forks_count - a.forks_count)
-    } else {
-      sorted.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
-    }
-    return sorted
-  }, [repos, sortBy, languageFilter, repoQuery])
 
   return (
     <>
