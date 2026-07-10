@@ -76,6 +76,28 @@ describe('formatAsMarkdown', () => {
     expect(md).not.toContain('has | a pipe')
   })
 
+  it('escapes a backslash before a pipe so the pipe stays escaped', () => {
+    const md = formatAsMarkdown(
+      userData({
+        repos: [
+          {
+            name: 'weird',
+            description: 'a\\|b',
+            stargazers_count: 1,
+            forks_count: 0,
+            language: 'JS',
+            updated_at: 'x',
+            html_url: 'https://github.com/octocat/weird',
+          },
+        ],
+      })
+    )
+    // Backslash is escaped first (\ -> \\), then the pipe (| -> \|), giving three
+    // backslashes before the pipe. The pipe is therefore preceded by an even number
+    // of literal backslashes plus its own escape, so it can never act as a delimiter.
+    expect(md).toContain('a\\\\\\|b')
+  })
+
   it('does not throw when there are no repositories', () => {
     const md = formatAsMarkdown(userData({ repos: [] }))
     expect(md).toContain('## Stats')

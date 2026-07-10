@@ -64,7 +64,11 @@ export function formatAsJSON(
 /** Escapes a value for use inside a Markdown table cell: pipes are escaped and
  *  newlines collapsed so a value can never break the table row. */
 function escapeMarkdownCell(value: string | null | undefined): string {
-  return (value ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ').trim()
+  return (value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|')
+    .replace(/\r?\n/g, ' ')
+    .trim()
 }
 
 /**
