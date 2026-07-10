@@ -82,18 +82,14 @@ function isAiInsightRequestBody(body: unknown): body is AiInsightRequestBody {
   }
   if (
     data.tone !== undefined &&
-    typeof data.tone !== 'string' &&
-    data.tone !== 'Professional' &&
-    data.tone !== 'Casual' &&
-    data.tone !== 'Tech-Heavy'
+    (typeof data.tone !== 'string' ||
+      (data.tone !== 'Professional' && data.tone !== 'Casual' && data.tone !== 'Tech-Heavy'))
   ) {
     return false
   }
   if (
     data.length !== undefined &&
-    typeof data.length !== 'string' &&
-    data.length !== 'Short' &&
-    data.length !== 'Detailed'
+    (typeof data.length !== 'string' || (data.length !== 'Short' && data.length !== 'Detailed'))
   ) {
     return false
   }
@@ -108,10 +104,18 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 
 export function buildPrompt(body: AiInsightRequestBody): string {
   const repoList =
-    body.topRepos
-      .map((r) => `- ${r.name} (${r.stars} stars): ${r.description || 'no description'}`)
-      .join('\n') || 'none listed'
-  const languages = body.topLanguages.join(', ') || 'unknown'
+    // Defensively handle unexpected types: treat non-arrays as empty lists.
+    (Array.isArray(body.topRepos)
+      ? body.topRepos
+          .map((r) => `- ${String((r as any).name)} (${Number((r as any).stars) || 0} stars): ${
+            (r as any).description || 'no description'
+          }`)
+          .join('\n')
+      : '') || 'none listed'
+
+  const languages = Array.isArray(body.topLanguages)
+    ? body.topLanguages.filter((l) => typeof l === 'string').join(', ') || 'unknown'
+    : String(body.topLanguages ?? 'unknown')
 
   // Untrusted profile fields (username, bio, repo names/descriptions) originate
   // from an attacker-controllable GitHub profile. Wrap them in a delimited block
