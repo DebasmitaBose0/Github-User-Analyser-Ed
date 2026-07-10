@@ -107,9 +107,13 @@ export function buildPrompt(body: AiInsightRequestBody): string {
     // Defensively handle unexpected types: treat non-arrays as empty lists.
     (Array.isArray(body.topRepos)
       ? body.topRepos
-          .map((r) => `- ${String((r as any).name)} (${Number((r as any).stars) || 0} stars): ${
-            (r as any).description || 'no description'
-          }`)
+          .map((r) => {
+            const repo = r as Record<string, unknown>
+            const name = typeof repo['name'] === 'string' ? (repo['name'] as string) : String(repo['name'] ?? 'unknown')
+            const stars = typeof repo['stars'] === 'number' ? (repo['stars'] as number) : Number(repo['stars'] as unknown) || 0
+            const desc = typeof repo['description'] === 'string' ? (repo['description'] as string) : String(repo['description'] ?? 'no description')
+            return `- ${name} (${stars} stars): ${desc}`
+          })
           .join('\n')
       : '') || 'none listed'
 
@@ -226,15 +230,48 @@ export default async function handler(
     })
   }
 
-  const body = req.body
-  if (!isAiInsightRequestBody(body)) {
+  const rawBody = req.body
+  if (!isAiInsightRequestBody(rawBody)) {
     return res.status(400).json({ text: null, error: 'Invalid request' })
   }
 
-  // Validate the username before it is interpolated into the prompt (defense in
-  // depth alongside the delimited untrusted-data block in buildPrompt).
+  // Create a fresh, typed object from the validated input and sanitize the
+  // username. This breaks any link to the original `req.body` (defense against
+  // parameter tampering) and makes the rest of the handler operate on a known
+  // safe shape.
+  let body: AiInsightRequestBody
   try {
-    body.username = sanitizeUsername(body.username)
+    const sanitizedUsername = sanitizeUsername(rawBody.username)
+
+    body = {
+      type: rawBody.type,
+      username: sanitizedUsername,
+      bio: typeof rawBody.bio === 'string' ? rawBody.bio : undefined,
+      topLanguages: Array.isArray(rawBody.topLanguages)
+        ? rawBody.topLanguages.filter((l) => typeof l === 'string') as string[]
+        : [],
+      topRepos: Array.isArray(rawBody.topRepos)
+        ? rawBody.topRepos.map((r) => {
+            const repo = r as Record<string, unknown>
+            return {
+              name: typeof repo.name === 'string' ? (repo.name as string) : String(repo.name ?? 'unknown'),
+              description: typeof repo.description === 'string' ? (repo.description as string) : String(repo.description ?? ''),
+              stars: typeof repo.stars === 'number' ? (repo.stars as number) : Number(repo.stars as unknown) || 0,
+            }
+          })
+        : [],
+      totalContributions: typeof rawBody.totalContributions === 'number' ? rawBody.totalContributions : undefined,
+      currentStreak: typeof rawBody.currentStreak === 'number' ? rawBody.currentStreak : undefined,
+      longestStreak: typeof rawBody.longestStreak === 'number' ? rawBody.longestStreak : undefined,
+      weekdayPct: typeof rawBody.weekdayPct === 'number' ? rawBody.weekdayPct : undefined,
+      weekendPct: typeof rawBody.weekendPct === 'number' ? rawBody.weekendPct : undefined,
+      mostProductiveDay: typeof rawBody.mostProductiveDay === 'string' ? rawBody.mostProductiveDay : undefined,
+      tone:
+        typeof rawBody.tone === 'string' && (rawBody.tone === 'Professional' || rawBody.tone === 'Casual' || rawBody.tone === 'Tech-Heavy')
+          ? rawBody.tone
+          : undefined,
+      length: typeof rawBody.length === 'string' && (rawBody.length === 'Short' || rawBody.length === 'Detailed') ? rawBody.length : undefined,
+    }
   } catch {
     return res.status(400).json({ text: null, error: 'Invalid username format' })
   }
