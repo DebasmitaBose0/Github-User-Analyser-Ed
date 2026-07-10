@@ -19,11 +19,22 @@ export function useRepoDashboard(data: UserData) {
   const [sortBy, setSortBy] = useState<SortOption>('stars')
   const [languageFilter, setLanguageFilter] = useState<string[]>([])
   const [repoQuery, setRepoQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
 
   // Clear the repo name search when navigating to a different profile.
   useEffect(() => {
     setRepoQuery('')
+    setDebouncedQuery('')
   }, [user.login])
+
+  // Debounce the query that actually drives filtering, so a large repo list
+  // isn't re-filtered on every keystroke. The input stays bound to the
+  // immediate `repoQuery` for responsiveness; only `debouncedQuery` feeds the
+  // filter after the user pauses (~250ms).
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(repoQuery), 250)
+    return () => clearTimeout(timer)
+  }, [repoQuery])
 
   // Language counts across ALL repos — always available, used for filter pills.
   const languageCounts = useMemo(() => aggregateLanguagesByCount(repos), [repos])
@@ -39,8 +50,8 @@ export function useRepoDashboard(data: UserData) {
   }, [usingByteData, byteDistribution, languageCounts])
 
   const displayedRepos = useMemo(
-    () => filterAndSortRepos(repos, sortBy, languageFilter, repoQuery),
-    [repos, sortBy, languageFilter, repoQuery]
+    () => filterAndSortRepos(repos, sortBy, languageFilter, debouncedQuery),
+    [repos, sortBy, languageFilter, debouncedQuery]
   )
 
   return {
