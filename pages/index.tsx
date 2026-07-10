@@ -94,39 +94,39 @@ export default function Home({ baseUrl }: HomePageProps) {
   return (
     <>
       <Head>
-        <title>GitHub User Analyzer</title>
+        <title>GitHub User Analyser</title>
         <meta name="description" content={SITE_DESCRIPTION} />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="GitHub User Analyzer" />
-        <meta property="og:title" content="GitHub User Analyzer" />
+        <meta property="og:site_name" content="GitHub User Analyser" />
+        <meta property="og:title" content="GitHub User Analyser" />
         <meta property="og:description" content={SITE_DESCRIPTION} />
         <meta property="og:image" content={baseUrl ? `${baseUrl}/og-default.png` : '/og-default.png'} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:image:alt" content="GitHub User Analyzer" />
+        <meta property="og:image:alt" content="GitHub User Analyser" />
         <meta property="og:url" content={baseUrl || '/'} />
 
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="GitHub User Analyzer" />
+        <meta name="twitter:title" content="GitHub User Analyser" />
         <meta name="twitter:description" content={SITE_DESCRIPTION} />
         <meta name="twitter:image" content={baseUrl ? `${baseUrl}/og-default.png` : '/og-default.png'} />
       </Head>
 
-      <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
-        <main className="flex-1 overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.14),transparent_25%),linear-gradient(180deg,#020617,#0f172a)]">
+      <div className="flex min-h-screen flex-col bg-slate-50 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
+        <main className="flex-1 overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.14),transparent_25%),linear-gradient(180deg,#f8fafc,#e2e8f0)] dark:bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),transparent_28%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.14),transparent_25%),linear-gradient(180deg,#020617,#0f172a)]">
           <div className="mx-auto max-w-6xl px-4 pt-0 lg:pt-4 pb-10 sm:pb-12 lg:pb-16">
             <div className="mb-6 flex items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-300/20">
+                <div className="flex h-16 w-16 items-center justify-center rounded-[1.25rem] bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 ring-1 ring-cyan-300/20">
                   <span className="text-xl font-semibold">GH</span>
                 </div>
                 <div>
-                  <p className="text-lg uppercase tracking-[0.3em] text-cyan-300 sm:text-2xl">GitHub User Analyzer</p>
+                  <p className="text-2xl sm:text-3xl font-semibold text-cyan-700 dark:text-cyan-300">GitHub User Analyser</p>
                 </div>
               </div>
               <ThemeToggle />
@@ -141,15 +141,15 @@ export default function Home({ baseUrl }: HomePageProps) {
                   </p>
                 </div>
 
-                <div className="relative rounded-[2rem] border border-white/10 bg-slate-900/90 pt-5 pb-6 px-8 shadow-2xl shadow-slate-950/30 min-h-[280px]">
+                <div className="relative rounded-[2rem] border border-slate-200/20 bg-white/90 pt-5 pb-6 px-8 shadow-2xl shadow-slate-900/5 min-h-[280px] dark:border-white/10 dark:bg-slate-900/90 dark:shadow-slate-950/30">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <p className="text-xs uppercase tracking-[0.3em] text-slate-400">{mode === 'search' ? 'Search' : 'Compare'}</p>
-                    <div className="inline-flex rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">
+                    <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">{mode === 'search' ? 'Search' : 'Compare'}</p>
+                    <div className="inline-flex rounded-full bg-slate-100/80 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-slate-700 dark:bg-white/5 dark:text-slate-300">
                       {mode === 'search' ? 'Search' : 'Compare'}
                     </div>
                   </div>
                   <div className="mb-6">
-                    <h2 className="text-xl font-semibold text-white whitespace-nowrap sm:whitespace-normal">
+                    <h2 className="text-xl font-semibold text-slate-950 dark:text-white whitespace-nowrap sm:whitespace-normal">
                       {mode === 'search'
                         ? 'Analyse\u00A0GitHub profile'
                         : 'Compare\u00A0GitHub profiles'}
@@ -162,7 +162,7 @@ export default function Home({ baseUrl }: HomePageProps) {
                       className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
                         mode === 'search'
                           ? 'bg-cyan-500 text-slate-950'
-                          : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                          : 'bg-slate-100/80 text-slate-700 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10'
                       }`}
                     >
                       Search
@@ -172,7 +172,7 @@ export default function Home({ baseUrl }: HomePageProps) {
                       className={`rounded-full px-5 py-2 text-sm font-semibold transition-all ${
                         mode === 'compare'
                           ? 'bg-cyan-500 text-slate-950'
-                          : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                          : 'bg-slate-100/80 text-slate-700 hover:bg-slate-200 dark:bg-white/5 dark:text-slate-300 dark:hover:bg-white/10'
                       }`}
                     >
                       Compare
@@ -199,7 +199,7 @@ export default function Home({ baseUrl }: HomePageProps) {
                         )}
 
                         {!compareLoading && !compareUserA && !compareUserB && !compareError && (
-                          <div className="text-slate-300">Add two usernames to compare their public GitHub stats.</div>
+                          <div className="text-slate-600 dark:text-slate-300">Add two usernames to compare their public GitHub stats.</div>
                         )}
                       </>
                     )}
@@ -211,28 +211,28 @@ export default function Home({ baseUrl }: HomePageProps) {
             <div className="mt-10 space-y-10">
               <section className="space-y-6 max-w-3xl">
                 <div>
-                  <h2 className="text-2xl font-semibold text-white">What makes this app useful?</h2>
-                  <p className="mt-3 text-slate-400 text-base leading-7">
-                    GitHub User Analyzer helps you find profiles quickly, understand key repository metrics, and compare two developers side by side with instant clarity.
+                  <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">What makes this app useful?</h2>
+                  <p className="mt-3 text-slate-600 dark:text-slate-400 text-base leading-7">
+                    GitHub User Analyser helps you find profiles quickly, understand key repository metrics, and compare two developers side by side with instant clarity.
                   </p>
                 </div>
 
-                <div className="space-y-5 text-slate-300">
+                <div className="space-y-5 text-slate-700 dark:text-slate-300">
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Fast profile search</h3>
-                    <p className="mt-2 text-slate-400 text-sm leading-6">
+                    <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Fast profile search</h3>
+                    <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-6">
                       Type in any GitHub username and get immediate access to public profile data, repository trends, and activity signals in one clean view.
                     </p>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Smart comparison mode</h3>
-                    <p className="mt-2 text-slate-400 text-sm leading-6">
+                    <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Smart comparison mode</h3>
+                    <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-6">
                       Compare two users side by side to spot strengths, repo health, and contribution patterns without switching between tabs.
                     </p>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-white">Clear insights</h3>
-                    <p className="mt-2 text-slate-400 text-sm leading-6">
+                    <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Clear insights</h3>
+                    <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm leading-6">
                       Explore follower growth, languages, and repo activity with simple visuals and concise summaries tailored for developers and recruiters.
                     </p>
                   </div>
