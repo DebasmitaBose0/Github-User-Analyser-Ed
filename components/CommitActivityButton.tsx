@@ -1,7 +1,17 @@
+import dynamic from 'next/dynamic'
+import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import { useState, useCallback } from 'react'
 import type { Repository, CodeFrequency } from '@/types/github'
 import { fetchCommitActivity } from '@/lib/commitActivity'
-import CommitActivityChart from '@/components/CommitActivityChart'
+// Only rendered once the user opens the commit activity, so its recharts bundle
+// should not be paid for on page load.
+// `ssr: false` is safe here rather than a behaviour change: the dashboard only
+// renders after the client-side profile fetch resolves, so this never rendered
+// on the server to begin with.
+const CommitActivityChart = dynamic(() => import('@/components/CommitActivityChart'), {
+  loading: () => <ChartSkeleton />,
+  ssr: false,
+})
 
 interface CommitActivityButtonProps {
   repo: Repository

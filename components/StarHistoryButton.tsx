@@ -1,7 +1,17 @@
+import dynamic from 'next/dynamic'
+import ChartSkeleton from '@/components/charts/ChartSkeleton'
 import { useState, useCallback } from 'react'
 import type { Repository, StarEntry } from '@/types/github'
 import { fetchStarHistory } from '@/lib/starHistory'
-import StarHistoryChart from '@/components/StarHistoryChart'
+// Only rendered once the user opens the star history, so its recharts bundle
+// should not be paid for on page load.
+// `ssr: false` is safe here rather than a behaviour change: the dashboard only
+// renders after the client-side profile fetch resolves, so this never rendered
+// on the server to begin with.
+const StarHistoryChart = dynamic(() => import('@/components/StarHistoryChart'), {
+  loading: () => <ChartSkeleton />,
+  ssr: false,
+})
 
 interface StarHistoryButtonProps {
   repo: Repository
