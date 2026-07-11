@@ -1,5 +1,7 @@
 import dynamic from 'next/dynamic'
 import ChartSkeleton from '@/components/charts/ChartSkeleton'
+import ErrorBoundary from '@/components/ErrorBoundary'
+import ErrorFallback from '@/components/ErrorFallback'
 import { useState, useCallback } from 'react'
 import type { Repository, StarEntry } from '@/types/github'
 import { fetchStarHistory } from '@/lib/starHistory'
@@ -55,7 +57,14 @@ export default function StarHistoryButton({ repo }: StarHistoryButtonProps) {
         {loading ? 'Loading...' : data ? 'Hide Star History' : '⭐ Star History'}
       </button>
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-      {data && <StarHistoryChart data={data} repoName={repo.name} />}
+      {data && (
+        // The chart is a lazily-fetched chunk now, so a failed chunk load throws during
+        // render — which the try/catch around the data fetch above cannot catch. Guard it
+        // with the same boundary TechStackSection already uses for its chart.
+        <ErrorBoundary fallback={ErrorFallback}>
+          <StarHistoryChart data={data} repoName={repo.name} />
+        </ErrorBoundary>
+      )}
     </div>
   )
 }
