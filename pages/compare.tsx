@@ -5,7 +5,7 @@ import Link from 'next/link'
 import type { GetServerSideProps } from 'next'
 import { resolveBaseUrl } from '@/lib/siteUrl'
 import { fetchUserData } from '@/lib/github'
-import { validateUsername } from '@/lib/validation'
+import { sanitizeUsername, validateUsername } from '@/lib/validation'
 import CompareForm from '@/components/CompareForm'
 import CompareResult from '@/components/CompareResult'
 import LoadingSkeleton from '@/components/LoadingSkeleton'
@@ -21,81 +21,105 @@ interface OgMeta {
 }
 
 interface ComparePageProps {
+  /** Sanitized. Never the raw query value — see getServerSideProps. */
   user1: string
   user2: string
-  /** Set when a username in the URL is malformed — so we never fetch it. */
+  /** Set when a username in the URL is malformed, so we never fetch it. */
   invalidReason: string | null
   og: OgMeta
 }
 
 export default function ComparePage({ user1, user2, invalidReason, og }: ComparePageProps) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [userA, setUserA] = useState<UserData | null>(null)
-  const [userB, setUserB] = useState<UserData | null>(null)
 
   const hasBoth = Boolean(user1 && user2)
+  const shouldFetch = hasBoth && !invalidReason
+
+  // Results and failures are stored *with the pair they belong to*, and the render state is derived
+  // from whether that pair still matches the URL. Two bugs fall out of doing it this way rather than
+  // keeping a `loading` boolean:
+  //
+  //  - a pasted link no longer flashes. The server has no data yet, so a stored `loading = false`
+  //    ships HTML showing an empty panel, and the skeleton only appears once the effect runs on the
+  //    client — visibly empty, then skeleton, then results. Derived, `isPending` is already true
+  //    during the server render, so the skeleton is in the very first byte of HTML.
+  //
+  //  - a stale comparison can never be painted under a new URL. Navigating from one pair to another
+  //    changes the props before any effect can clear the old state, so for one frame the previous
+  //    result would render beneath the new query string. Tagging the data with its pair makes that
+  //    impossible: it simply stops matching.
+  const [result, setResult] = useState<{ pair: string; userA: UserData; userB: UserData } | null>(
+    null
+  )
+  const [failure, setFailure] = useState<{ pair: string; message: string } | null>(null)
+
+  // Navigation is a separate concern from the fetch. `router.push` returns a promise that can
+  // reject, and until it settles the new query hasn't landed — so without this the form stays live
+  // during the round-trip and a second submission can be fired underneath the first.
+  const [navigating, setNavigating] = useState(false)
+  const [navError, setNavError] = useState('')
+
+  const pairKey = `${user1}|${user2}`
+  const current = result?.pair === pairKey ? result : null
+  const error = failure?.pair === pairKey ? failure.message : ''
+  const isPending = shouldFetch && !current && !error
 
   useEffect(() => {
-    // Nothing to fetch: either the URL carries no pair, or one of the names is malformed and
-    // was rejected server-side. Either way we render a message, not a request.
-    if (!hasBoth || invalidReason) {
-      setUserA(null)
-      setUserB(null)
-      setError('')
-      setLoading(false)
-      return
-    }
+    // Nothing to fetch: either the URL carries no pair, or one of the names is malformed and was
+    // rejected server-side. Either way we render a message, not a request.
+    if (!shouldFetch) return
 
-    // If someone runs a second comparison before the first resolves, the slower response must
-    // not overwrite the newer one — otherwise the page can end up showing a pair the URL no
-    // longer describes.
+    // If someone runs a second comparison before the first resolves, the slower response must not
+    // overwrite the newer one.
     let cancelled = false
-
-    setLoading(true)
-    setError('')
-    setUserA(null)
-    setUserB(null)
+    const pair = `${user1}|${user2}`
 
     Promise.all([fetchUserData(user1), fetchUserData(user2)])
       .then(([dataA, dataB]) => {
         if (cancelled) return
 
-        // `fetchUserData` resolves every status and reports the failure on `data.error`, so a
-        // bad username stays attributable to *which* user it was rather than collapsing into a
-        // single "something went wrong" — that's the behaviour the home page had, kept here.
+        // `fetchUserData` resolves every status and reports the failure on `data.error`, so a bad
+        // username stays attributable to *which* user it was rather than collapsing into a single
+        // "something went wrong" — the behaviour the home page had, kept here.
         if (dataA.error) {
-          setError(`${user1}: ${dataA.error}`)
+          setFailure({ pair, message: `${user1}: ${dataA.error}` })
         } else if (dataB.error) {
-          setError(`${user2}: ${dataB.error}`)
+          setFailure({ pair, message: `${user2}: ${dataB.error}` })
         } else {
-          setUserA(dataA)
-          setUserB(dataB)
+          setResult({ pair, userA: dataA, userB: dataB })
         }
       })
       .catch(() => {
-        if (!cancelled) setError('Failed to fetch one or both profiles')
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setFailure({ pair, message: 'Failed to fetch one or both profiles' })
+        }
       })
 
     return () => {
       cancelled = true
     }
-    // Re-runs whenever the URL changes, which is what makes a refresh, a Back, or a pasted link
-    // all behave identically — the query string is the single source of truth for this page.
-  }, [user1, user2, hasBoth, invalidReason])
+    // Re-runs whenever the URL changes, which is what makes a refresh, a Back and a pasted link all
+    // behave identically — the query string is the single source of truth for this page.
+  }, [user1, user2, shouldFetch])
 
-  const handleCompare = (rawA: string, rawB: string) => {
+  const handleCompare = async (rawA: string, rawB: string) => {
     const nextA = rawA.trim()
     const nextB = rawB.trim()
     if (!nextA || !nextB) return
 
-    // `push`, not `replace`, so Back returns to the previous comparison rather than skipping
-    // out of the page entirely.
-    router.push({ pathname: '/compare', query: { user1: nextA, user2: nextB } })
+    setNavError('')
+    setNavigating(true)
+
+    try {
+      // `push`, not `replace`, so Back returns to the previous comparison rather than skipping out
+      // of the page entirely. Awaited, so the form stays disabled until the new query has actually
+      // landed, and a rejected navigation surfaces instead of being swallowed.
+      await router.push({ pathname: '/compare', query: { user1: nextA, user2: nextB } })
+    } catch {
+      setNavError('Could not open that comparison')
+    } finally {
+      setNavigating(false)
+    }
   }
 
   return (
@@ -149,33 +173,37 @@ export default function ComparePage({ user1, user2, invalidReason, og }: Compare
               <div className="space-y-3">
                 {/*
                   `key` deliberately: useState only reads its initial value on mount, so without a
-                  remount the fields would keep showing the *previous* pair after navigating from
-                  one comparison to another. Keying on the pair is React's documented way to reset
-                  state when the identity of the thing being edited changes.
+                  remount the fields would keep showing the *previous* pair after navigating from one
+                  comparison to another. Keying on the pair is React's documented way to reset state
+                  when the identity of the thing being edited changes.
                 */}
                 <CompareForm
-                  key={`${user1}|${user2}`}
+                  key={pairKey}
                   initialUserA={user1}
                   initialUserB={user2}
                   onCompare={handleCompare}
-                  loading={loading}
+                  loading={isPending || navigating}
                 />
 
                 {invalidReason && (
                   <div className="text-sm text-rose-500 dark:text-rose-300">{invalidReason}</div>
                 )}
 
+                {navError && (
+                  <div className="text-sm text-rose-500 dark:text-rose-300">{navError}</div>
+                )}
+
                 {error && !invalidReason && (
                   <div className="text-sm text-rose-500 dark:text-rose-300">{error}</div>
                 )}
 
-                {loading && <LoadingSkeleton />}
+                {isPending && <LoadingSkeleton />}
 
-                {!loading && !error && !invalidReason && userA && userB && (
-                  <CompareResult userA={userA} userB={userB} />
+                {!isPending && !error && !invalidReason && current && (
+                  <CompareResult userA={current.userA} userB={current.userB} />
                 )}
 
-                {!loading && !error && !invalidReason && !hasBoth && (
+                {!isPending && !error && !invalidReason && !hasBoth && (
                   <div className="text-slate-600 dark:text-slate-300">
                     Add two usernames to compare their public GitHub stats.
                   </div>
@@ -191,54 +219,64 @@ export default function ComparePage({ user1, user2, invalidReason, og }: Compare
 }
 
 export const getServerSideProps: GetServerSideProps<ComparePageProps> = async ({ query, req }) => {
-  // A query string is allowed to repeat a key (`?user1=a&user1=b`), which Next surfaces as an
-  // array. Take the first, the same way /[username] handles its route param.
+  // A query string is allowed to repeat a key (`?user1=a&user1=b`), which Next surfaces as an array.
+  // Take the first, the same way /[username] handles its route param.
   const first = (value: string | string[] | undefined): string =>
     (Array.isArray(value) ? value[0] : value) ?? ''
 
-  const user1 = first(query.user1).trim()
-  const user2 = first(query.user2).trim()
+  const rawUser1 = first(query.user1).trim()
+  const rawUser2 = first(query.user2).trim()
 
-  // Validate on the server, not in the browser. These names arrive from a URL anyone can edit,
-  // and rejecting a malformed one here means it never reaches `fetchUserData` at all — a shared
-  // bad link renders an explanation instead of firing a request that was always going to fail.
+  // Validate the *raw* value. Sanitizing first would quietly rewrite `torva!ds` into `torvalds` and
+  // then compare a user the link never asked for — the address bar and the page must not disagree.
+  const checkedA = validateUsername(rawUser1)
+  const checkedB = validateUsername(rawUser2)
+
+  // ...but sanitize before any of it reaches the page. `sanitizeUsername` strips everything outside
+  // [a-zA-Z0-9-], so from this line down nothing is attacker-controlled: not the props, not the OG
+  // tags, not the canonical href, not the form values.
   //
-  // `validateUsername` returns a reason rather than throwing (unlike `securitySanitizer`'s
-  // version), which is what lets us say *why* the link is broken.
-  let invalidReason: string | null = null
-  if (user1 || user2) {
-    const checkedA = validateUsername(user1)
-    const checkedB = validateUsername(user2)
+  // Validating and then passing the raw value through anyway — which is what this did before — is
+  // exactly the reflected-input shape CodeQL flagged. React would have escaped it on render, but
+  // relying on that is relying on a downstream accident rather than on a boundary.
+  const user1 = sanitizeUsername(rawUser1)
+  const user2 = sanitizeUsername(rawUser2)
 
+  // The message says which field is broken and why, and deliberately does not echo the input back —
+  // there is no reason for a page to repeat an attacker's string in order to reject it. Each
+  // `reason` is one of three fixed strings from validateUsername.
+  let invalidReason: string | null = null
+  if (rawUser1 || rawUser2) {
     if (!checkedA.valid) {
-      invalidReason = `${user1 || 'First username'}: ${checkedA.reason}`
+      invalidReason = `First username: ${checkedA.reason}`
     } else if (!checkedB.valid) {
-      invalidReason = `${user2 || 'Second username'}: ${checkedB.reason}`
+      invalidReason = `Second username: ${checkedB.reason}`
     }
   }
 
   const baseUrl = resolveBaseUrl(req)
-  const hasBoth = Boolean(user1 && user2)
+  const showPair = Boolean(user1 && user2) && !invalidReason
 
-  // Derived from the query alone — no GitHub call — so the page renders with no added latency.
-  // This mirrors how /[username] builds its tags from the route rather than from fetched data.
-  const title = hasBoth
+  // Derived from the query alone — no GitHub call — so the page renders with no added latency. This
+  // mirrors how /[username] builds its tags from the route rather than from fetched data.
+  const title = showPair
     ? `${user1} vs ${user2} · GitHub User Analyser`
     : 'Compare · GitHub User Analyser'
 
-  const description = hasBoth
+  const description = showPair
     ? `Compare @${user1} and @${user2} side by side — repositories, stars, languages and contribution activity.`
     : 'Compare two GitHub profiles side by side.'
 
-  const path = hasBoth
+  const path = showPair
     ? `/compare?user1=${encodeURIComponent(user1)}&user2=${encodeURIComponent(user2)}`
     : '/compare'
 
   const og: OgMeta = {
     title,
     description,
-    // Absolute URLs come from the shared resolver so every page agrees on the host, including
-    // behind a proxy; it falls back to a root-relative path when nothing is configured.
+    // Same-origin by construction: a resolver-provided base, then a fixed `/compare` path carrying
+    // only sanitized, percent-encoded names. There is no input path that turns this into an
+    // off-site or `javascript:` URL.
     url: baseUrl ? `${baseUrl}${path}` : path,
     image: baseUrl ? `${baseUrl}/og-default.png` : '/og-default.png',
   }
