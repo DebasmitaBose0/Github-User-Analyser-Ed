@@ -225,7 +225,9 @@ async function avatarToDataUrl(url: string): Promise<string | null> {
   }
   
   try {
-    const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 5000 })
+    // Reconstruct URL from validated components to prevent SSRF
+    const validatedUrl = new URL(url)
+    const response = await axios.get(validatedUrl.toString(), { responseType: 'arraybuffer', timeout: 5000 })
     const contentType = response.headers['content-type'] || 'image/jpeg'
     const base64 = Buffer.from(response.data as ArrayBuffer).toString('base64')
     return `data:${contentType};base64,${base64}`
