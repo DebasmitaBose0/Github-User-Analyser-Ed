@@ -1,4 +1,4 @@
-import { useState, useId } from 'react'
+import { useState, useId, memo } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { getLanguageColor } from '@/lib/languageColors'
 import CustomChartContainer from './charts/CustomChartContainer'
@@ -28,7 +28,7 @@ function valueLabel(value: number, mode: 'bytes' | 'count'): string {
   return value === 1 ? '1 repo' : `${value} repos`
 }
 
-export default function LanguageChart({ data, mode = 'count' }: LanguageChartProps) {
+function LanguageChart({ data, mode = 'count' }: LanguageChartProps) {
   const [showAll, setShowAll] = useState(false)
   const panelId = useId()
 
@@ -46,7 +46,16 @@ export default function LanguageChart({ data, mode = 'count' }: LanguageChartPro
 
   return (
     <CustomChartContainer title="Language Distribution" height="auto">
-      <div className="h-64">
+      <div
+        className="h-64"
+        role="img"
+        aria-label={`Language distribution across ${sorted.length} language${
+          sorted.length === 1 ? '' : 's'
+        }. Most used: ${sorted
+          .slice(0, 3)
+          .map((d) => d.name)
+          .join(', ')}.`}
+      >
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -121,3 +130,7 @@ export default function LanguageChart({ data, mode = 'count' }: LanguageChartPro
     </CustomChartContainer>
   )
 }
+
+// recharts pie; re-rendered by every dashboard state change (search, sort, modal)
+// even though its aggregated language data is unchanged.
+export default memo(LanguageChart)

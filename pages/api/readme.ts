@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import axios, { type AxiosError } from 'axios'
 import { getCached, setCached } from '@/lib/cache'
 import { sanitizeUsername, sanitizeRepoName } from '@/lib/securitySanitizer'
+import { env } from '@/lib/env'
 
 interface ReadmeResponse {
   content: string | null
@@ -30,7 +31,8 @@ export default async function handler(
   }
 
   const cacheKey = `readme:${owner}/${repo}`
-  const cached = getCached<ReadmeResponse>(cacheKey)
+  // FIXED: Added await here
+  const cached = await getCached<ReadmeResponse>(cacheKey)
   if (cached) {
     return res.status(200).json(cached)
   }
@@ -38,8 +40,8 @@ export default async function handler(
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
   }
-  if (process.env.GITHUB_TOKEN) {
-    headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`
+  if (env.GITHUB_TOKEN) {
+    headers['Authorization'] = `Bearer ${env.GITHUB_TOKEN}`
   }
 
   try {
@@ -51,7 +53,8 @@ export default async function handler(
     const decoded = Buffer.from(base64Content, 'base64').toString('utf-8')
     const result: ReadmeResponse = { content: decoded }
 
-    setCached(cacheKey, result, README_CACHE_TTL_MS)
+    // FIXED: Added await here
+    await setCached(cacheKey, result, README_CACHE_TTL_MS)
     return res.status(200).json(result)
   } catch (err: unknown) {
     const error = err as AxiosError

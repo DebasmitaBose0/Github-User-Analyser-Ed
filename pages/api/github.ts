@@ -11,8 +11,33 @@ import type {
 import { computeProductivityStats } from '@/lib/contributionStats'
 import { getCachedWithFallback } from '@/lib/cache'
 import { sanitizeUsername } from '@/lib/securitySanitizer'
+import { env } from '@/lib/env'
+import { withRetry, type RetryInfo } from '@/lib/retry'
 
 const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+// Abort a hung GitHub request instead of letting it hang until the platform kills
+// the invocation, leaving the user on an indefinite loading state.
+const GITHUB_TIMEOUT_MS = 10000
+
+/**
+ * Logs a retry with enough context to tell causes apart. `context` is always a
+ * hardcoded literal and no user-controlled value is interpolated, so this stays
+ * clear of log-injection.
+ */
+function retryLogger(context: string) {
+  return ({ attempt, delayMs, error }: RetryInfo) => {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    const code = (error as { code?: string })?.code
+    console.warn('[github] transient failure; retrying request:', {
+      context,
+      attempt,
+      delayMs,
+      status,
+      code,
+    })
+  }
+}
 
 class GraphQLNotFoundError extends Error {}
 class GraphQLOtherError extends Error {}
@@ -86,8 +111,9 @@ interface GraphQLUserResponse {
   }
 }
 
+// FIX 1: Add $from and $to variables to the query definition and pass them to contributionsCollection
 const GRAPHQL_QUERY = `
-  query($username: String!) {
+  query($username: String!, $from: DateTime!, $to: DateTime!) {
     rateLimit {
       limit
       remaining
@@ -107,7 +133,7 @@ const GRAPHQL_QUERY = `
       url
       followers { totalCount }
       following { totalCount }
-      contributionsCollection {
+      contributionsCollection(from: $from, to: $to) {
         totalCommitContributions
         totalIssueContributions
         totalPullRequestContributions
@@ -222,15 +248,32 @@ async function fetchViaGraphQL(username: string): Promise<{
   pinnedRepos: Repository[]
   rateLimit: RateLimitInfo | undefined
 }> {
-  const response = await axios.post(
-    'https://api.github.com/graphql',
-    { query: GRAPHQL_QUERY, variables: { username } },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-    }
+  // FIX 2: Calculate a strict 1-year UTC window to prevent timezone drifting
+  const toDate = new Date()
+  const fromDate = new Date()
+  fromDate.setUTCFullYear(toDate.getUTCFullYear() - 1)
+
+  const response = await withRetry(
+    () =>
+      axios.post(
+        'https://api.github.com/graphql',
+        {
+          query: GRAPHQL_QUERY,
+          variables: {
+            username,
+            from: fromDate.toISOString(),
+            to: toDate.toISOString()
+          }
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: GITHUB_TIMEOUT_MS,
+        }
+      ),
+    { onRetry: retryLogger('graphql') }
   )
 
   const errors = response.data?.errors as { type?: string; message?: string }[] | undefined
@@ -321,8 +364,8 @@ async function fetchRateLimitSnapshot(): Promise<RateLimitInfo | undefined> {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',
     }
-    if (process.env.GITHUB_TOKEN) {
-      headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`
+    if (env.GITHUB_TOKEN) {
+      headers['Authorization'] = `Bearer ${env.GITHUB_TOKEN}`
     }
     // Best-effort only: a short timeout ensures a stalled GitHub request can't
     // block the otherwise-fast cached profile response.
@@ -333,7 +376,7 @@ async function fetchRateLimitSnapshot(): Promise<RateLimitInfo | undefined> {
     const resources = response.data?.resources as
       | Record<string, { limit?: number; remaining?: number; reset?: number }>
       | undefined
-    const bucket = process.env.GITHUB_TOKEN ? resources?.graphql : resources?.core
+    const bucket = env.GITHUB_TOKEN ? resources?.graphql : resources?.core
     if (!bucket || typeof bucket.limit !== 'number' || typeof bucket.remaining !== 'number') {
       return undefined
     }
@@ -361,7 +404,7 @@ export default async function handler(
       contributions: null,
       engagement: null,
       productivity: null,
-      error: 'Username is required',
+      error: 'Invalid username',
       errorType: 'unknown',
     })
   }
@@ -385,7 +428,7 @@ export default async function handler(
 
   try {
     const cached = await getCachedWithFallback<UserData>(cacheKey, PROFILE_CACHE_TTL_MS, async () => {
-      if (process.env.GITHUB_TOKEN) {
+      if (env.GITHUB_TOKEN) {
         try {
           const result = await fetchViaGraphQL(username)
           const productivity = computeProductivityStats(result.contributions.weeks)
@@ -394,21 +437,47 @@ export default async function handler(
           if (err instanceof GraphQLNotFoundError) {
             throw err
           }
+          // Non-"not found" GraphQL failures (rate-limit, transient 5xx, partial
+          // GraphQL/schema errors) previously fell through to REST silently,
+          // degrading token-backed deployments (no heatmap/engagement/productivity)
+          // with nothing in the logs. Keep the graceful REST fallback, but log
+          // with enough context to tell the causes apart.
+          const message = err instanceof Error ? err.message : String(err)
+          const kind = /rate limit|secondary rate|api rate/i.test(message)
+            ? 'rate-limit'
+            : err instanceof GraphQLOtherError
+              ? 'graphql-error'
+              : 'transient'
+          console.error(
+            `[github] GraphQL fetch failed for @${username} [${kind}]; falling back to REST:`,
+            message
+          )
         }
       }
 
       const headers: Record<string, string> = {
         Accept: 'application/vnd.github.v3+json',
       }
-      if (process.env.GITHUB_TOKEN) {
-        headers['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`
+      if (env.GITHUB_TOKEN) {
+        headers['Authorization'] = `Bearer ${env.GITHUB_TOKEN}`
       }
 
       const [userResponse, reposResponse] = await Promise.all([
-        axios.get(`https://api.github.com/users/${username}`, { headers }),
-        axios.get(
-          `https://api.github.com/users/${username}/repos?sort=updated&direction=desc&per_page=100`,
-          { headers }
+        withRetry(
+          () =>
+            axios.get(`https://api.github.com/users/${username}`, {
+              headers,
+              timeout: GITHUB_TIMEOUT_MS,
+            }),
+          { onRetry: retryLogger('rest:user') }
+        ),
+        withRetry(
+          () =>
+            axios.get(
+              `https://api.github.com/users/${username}/repos?sort=updated&direction=desc&per_page=100`,
+              { headers, timeout: GITHUB_TIMEOUT_MS }
+            ),
+          { onRetry: retryLogger('rest:repos') }
         ),
       ])
 
@@ -434,6 +503,20 @@ export default async function handler(
         productivity: null,
         error: 'User not found',
         errorType: 'not_found',
+      })
+    }
+
+    // A timeout aborts with code ECONNABORTED and carries no response — surface it
+    // as a distinct network error rather than falling through to a generic failure.
+    if ((err as { code?: string }).code === 'ECONNABORTED') {
+      return res.status(504).json({
+        user: {} as GitHubUser,
+        repos: [],
+        contributions: null,
+        engagement: null,
+        productivity: null,
+        error: 'The request to GitHub timed out. Please try again.',
+        errorType: 'network',
       })
     }
 
