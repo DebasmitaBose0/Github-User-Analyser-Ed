@@ -191,7 +191,11 @@ export default function Home({ baseUrl }: HomePageProps) {
                       <>
                         <CompareForm onCompare={handleCompare} loading={compareNavigating} />
 
-                        {compareError && <div className="text-sm text-rose-200">{compareError}</div>}
+                        {compareError && (
+                          <div role="alert" className="text-sm text-rose-200">
+                            {compareError}
+                          </div>
+                        )}
 
                         <div className="text-slate-600 dark:text-slate-300">Add two usernames to compare their public GitHub stats.</div>
                       </>

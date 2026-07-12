@@ -187,16 +187,28 @@ export default function ComparePage({ user1, user2, invalidReason, og }: Compare
                   loading={isPending || navigating}
                 />
 
+                {/*
+                  role="alert" so assistive tech announces these when they appear — they're rendered
+                  conditionally, and without it a screen-reader user gets no signal that the link
+                  they opened was rejected or that a comparison failed. Matches ErrorState.tsx,
+                  which already does this; this page simply wasn't following the convention.
+                */}
                 {invalidReason && (
-                  <div className="text-sm text-rose-500 dark:text-rose-300">{invalidReason}</div>
+                  <div role="alert" className="text-sm text-rose-500 dark:text-rose-300">
+                    {invalidReason}
+                  </div>
                 )}
 
                 {navError && (
-                  <div className="text-sm text-rose-500 dark:text-rose-300">{navError}</div>
+                  <div role="alert" className="text-sm text-rose-500 dark:text-rose-300">
+                    {navError}
+                  </div>
                 )}
 
                 {error && !invalidReason && (
-                  <div className="text-sm text-rose-500 dark:text-rose-300">{error}</div>
+                  <div role="alert" className="text-sm text-rose-500 dark:text-rose-300">
+                    {error}
+                  </div>
                 )}
 
                 {isPending && <LoadingSkeleton />}
