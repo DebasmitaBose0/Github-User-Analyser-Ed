@@ -15,7 +15,7 @@ import type { UserData } from '@/types/github'
 import { getCached } from '@/lib/cache'
 import { validateRequest, exportUserDataSchema } from '@/lib/apiValidation'
 import { getClientIp, createRateLimiter } from '@/lib/rateLimit'
-import { logError, logWarn } from '@/lib/errorLogger'
+import { logError } from '@/lib/errorLogger'
 
 // ─── Styles ─────────────────────────────────────────────────────────────
 
@@ -460,16 +460,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (req.body != null && validateRequest(res, exportUserDataSchema, req.body) === null) {
       return
     }
-    try {
-      userData = req.body as UserData
-    } catch (error) {
-      // Degrades to a PDF without user data rather than failing — but it shouldn't do so
-      // silently, or a malformed body looks identical to an empty one.
-      logWarn('api/export/pdf', 'could not read the request body; continuing without user data', {
-        reason: error instanceof Error ? error.message : String(error),
-      })
-      userData = null
-    }
+    // `as UserData` is a compile-time assertion with no runtime behaviour, and Next's body
+    // parser has already run by the time the handler is invoked — so this is a plain
+    // assignment that cannot throw. The try/catch around it was unreachable, and the
+    // malformed-body case is already handled by the validateRequest gate directly above.
+    userData = req.body as UserData
   }
 
   if (!userData) {
