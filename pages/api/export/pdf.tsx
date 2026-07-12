@@ -219,7 +219,11 @@ function isAllowedAvatarUrl(rawUrl: unknown): rawUrl is string {
 }
 
 async function avatarToDataUrl(url: string): Promise<string | null> {
-  if (!isAllowedAvatarUrl(url)) return null
+  // Validate against SSRF: only allow HTTPS URLs from whitelisted GitHub domains
+  if (!isAllowedAvatarUrl(url)) {
+    return null
+  }
+  
   try {
     const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 5000 })
     const contentType = response.headers['content-type'] || 'image/jpeg'
