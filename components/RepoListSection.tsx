@@ -68,7 +68,7 @@ export default function RepoListSection({
                   <RepositoryCard
                     key={repo.name}
                     repo={repo}
-                    onClick={() => onRepoClick(repo)}
+                    onSelect={onRepoClick}
                   />
                 ))}
               </div>
