@@ -147,7 +147,19 @@ export default function ComparePage({ user1, user2, invalidReason, og }: Compare
               </div>
 
               <div className="space-y-3">
-                <CompareForm onCompare={handleCompare} loading={loading} />
+                {/*
+                  `key` deliberately: useState only reads its initial value on mount, so without a
+                  remount the fields would keep showing the *previous* pair after navigating from
+                  one comparison to another. Keying on the pair is React's documented way to reset
+                  state when the identity of the thing being edited changes.
+                */}
+                <CompareForm
+                  key={`${user1}|${user2}`}
+                  initialUserA={user1}
+                  initialUserB={user2}
+                  onCompare={handleCompare}
+                  loading={loading}
+                />
 
                 {invalidReason && (
                   <div className="text-sm text-rose-500 dark:text-rose-300">{invalidReason}</div>
