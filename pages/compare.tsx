@@ -16,6 +16,8 @@ import type { UserData } from '@/types/github'
 interface OgMeta {
   title: string
   description: string
+  /** Root-relative, and deliberately so — see getServerSideProps. */
+  canonical: string
   url: string
   image: string
 }
@@ -127,7 +129,7 @@ export default function ComparePage({ user1, user2, invalidReason, og }: Compare
       <Head>
         <title>{og.title}</title>
         <meta name="description" content={og.description} />
-        <link rel="canonical" href={og.url} />
+        <link rel="canonical" href={og.canonical} />
 
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="GitHub User Analyser" />
@@ -254,7 +256,27 @@ export const getServerSideProps: GetServerSideProps<ComparePageProps> = async ({
     }
   }
 
-  const baseUrl = resolveBaseUrl(req)
+  // `resolveBaseUrl` prefers NEXT_PUBLIC_SITE_URL, but when that isn't configured it falls back to
+  // `x-forwarded-proto` / `x-forwarded-host` / `host` — every one of which is set by the *client*.
+  // Two consequences, both of which CodeQL flagged and both of which are real:
+  //
+  //   - a request carrying `X-Forwarded-Proto: javascript` yields a `javascript:...` base. Inside a
+  //     <link href> that is a live XSS sink, not a theoretical one.
+  //   - a spoofed `X-Forwarded-Host` puts an off-site origin into og:url and the canonical link.
+  //
+  // So the resolved value is parsed rather than trusted: only a well-formed http(s) origin survives,
+  // and a `javascript:` (or any other) scheme is discarded outright.
+  const safeOrigin = ((): string => {
+    const candidate = resolveBaseUrl(req)
+    if (!candidate) return ''
+    try {
+      const parsed = new URL(candidate)
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.origin : ''
+    } catch {
+      return ''
+    }
+  })()
+
   const showPair = Boolean(user1 && user2) && !invalidReason
 
   // Derived from the query alone — no GitHub call — so the page renders with no added latency. This
@@ -274,11 +296,16 @@ export const getServerSideProps: GetServerSideProps<ComparePageProps> = async ({
   const og: OgMeta = {
     title,
     description,
-    // Same-origin by construction: a resolver-provided base, then a fixed `/compare` path carrying
-    // only sanitized, percent-encoded names. There is no input path that turns this into an
-    // off-site or `javascript:` URL.
-    url: baseUrl ? `${baseUrl}${path}` : path,
-    image: baseUrl ? `${baseUrl}/og-default.png` : '/og-default.png',
+    // The canonical link is emitted root-relative, always. A relative canonical is valid HTML, and
+    // keeping a header-derived origin out of an `href` removes the sink outright rather than trying
+    // to sanitize attacker-influenced input into one. `path` is built here from sanitized,
+    // percent-encoded names, so it carries nothing from the request but the two usernames.
+    canonical: path,
+    // og:url and og:image are <meta content> values — read by crawlers, never navigated by the
+    // browser — and the Open Graph spec wants them absolute so the image resolves. They use the
+    // parsed, protocol-checked origin above.
+    url: safeOrigin ? `${safeOrigin}${path}` : path,
+    image: safeOrigin ? `${safeOrigin}/og-default.png` : '/og-default.png',
   }
 
   return { props: { user1, user2, invalidReason, og } }
