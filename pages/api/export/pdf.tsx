@@ -15,6 +15,7 @@ import type { UserData } from '@/types/github'
 import { getCached } from '@/lib/cache'
 import { validateRequest, exportUserDataSchema } from '@/lib/apiValidation'
 import { getClientIp, createRateLimiter } from '@/lib/rateLimit'
+import { logError, logWarn } from '@/lib/errorLogger'
 
 // ─── Styles ─────────────────────────────────────────────────────────────
 
@@ -461,7 +462,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
     try {
       userData = req.body as UserData
-    } catch {
+    } catch (error) {
+      // Degrades to a PDF without user data rather than failing — but it shouldn't do so
+      // silently, or a malformed body looks identical to an empty one.
+      logWarn('api/export/pdf', 'could not read the request body; continuing without user data', {
+        reason: error instanceof Error ? error.message : String(error),
+      })
       userData = null
     }
   }
@@ -488,7 +494,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Cache-Control', 'no-store')
     return res.status(200).send(pdfBuffer)
   } catch (error) {
-    console.error('PDF generation failed:', error)
+    logError('api/export/pdf', error, { username })
     return res.status(500).json({ error: 'Failed to generate PDF' })
   }
 }
