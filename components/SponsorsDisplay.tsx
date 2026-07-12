@@ -55,6 +55,7 @@ export default function SponsorsDisplay({ username }: SponsorsDisplayProps) {
               rel="noopener noreferrer"
               className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600/50 transition-colors"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={sponsor.avatarUrl}
                 alt={sponsor.login}

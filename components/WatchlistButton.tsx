@@ -1,11 +1,10 @@
-import { useState, useSyncExternalStore } from 'react'
-import { addToWatchlist, removeFromWatchlist, isInWatchlist, getWatchlist } from '@/lib/watchlist'
+import { useSyncExternalStore } from 'react'
+import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/watchlist'
 import type { Repository, GitHubUser } from '@/types/github'
 
-interface WatchlistButtonProps {
-  target: Repository | GitHubUser
-  type: 'repo' | 'user'
-}
+type WatchlistButtonProps =
+  | { target: Repository; type: 'repo' }
+  | { target: GitHubUser; type: 'user' }
 
 function subscribe(cb: () => void): () => void {
   window.addEventListener('storage', cb)
@@ -16,12 +15,12 @@ function getSnapshot(type: 'repo' | 'user', id: string): boolean {
   return isInWatchlist(`${type}-${id}`)
 }
 
-export default function WatchlistButton({ target, type }: WatchlistButtonProps) {
-  const id = `${type}-${'name' in target ? target.name : target.login}`
-  const name = 'name' in target ? target.name : target.login
-  const login = 'login' in target ? target.login : undefined
+export default function WatchlistButton(props: WatchlistButtonProps) {
+  const id = props.type === 'repo' ? `${props.type}-${props.target.name}` : `${props.type}-${props.target.login}`
+  const name = props.type === 'repo' ? props.target.name : props.target.login
+  const login = props.type === 'repo' ? undefined : props.target.login
 
-  const watched = useSyncExternalStorage(id, type)
+  const watched = useSyncExternalStorage(id, props.type)
 
   const handleToggle = () => {
     if (watched) {
@@ -29,9 +28,15 @@ export default function WatchlistButton({ target, type }: WatchlistButtonProps) 
     } else {
       addToWatchlist({
         id,
-        type,
-        name: type === 'user' ? (login ?? name) : `${(target as Repository).owner_login ?? ''}/${name}`,
-        data: type === 'repo' ? { stars: (target as Repository).stargazers_count } : { repos: (target as GitHubUser).public_repos },
+        type: props.type,
+        name:
+          props.type === 'user'
+            ? (login ?? name)
+            : `${(props.target as Repository).owner_login ?? ''}/${name}`,
+        data:
+          props.type === 'repo'
+            ? { stars: (props.target as Repository).stargazers_count }
+            : { repos: (props.target as GitHubUser).public_repos },
       })
     }
     window.dispatchEvent(new Event('storage'))
@@ -56,15 +61,9 @@ export default function WatchlistButton({ target, type }: WatchlistButtonProps) 
 }
 
 function useSyncExternalStorage(id: string, type: 'repo' | 'user'): boolean {
-  try {
-    return useSyncExternalStore(
-      subscribe,
-      () => getSnapshot(type, id),
-      () => false
-    )
-  } catch {
-    const [watched, setWatched] = useState(() => isInWatchlist(id))
-    const handler = () => setWatched(isInWatchlist(id))
-    return watched
-  }
+  return useSyncExternalStore(
+    subscribe,
+    () => getSnapshot(type, id),
+    () => false
+  )
 }

@@ -113,6 +113,7 @@ export default function FollowersExplorer({
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
                 >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={u.avatarUrl}
                     alt={u.login}

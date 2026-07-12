@@ -1,6 +1,8 @@
 import { useState, memo } from 'react'
 import type { GitHubUser } from '@/types/github'
 import WatchlistButton from '@/components/WatchlistButton'
+import FavoriteButton from '@/components/FavoriteButton'
+import FollowersExplorer from '@/components/FollowersExplorer'
 
 interface UserCardProps {
   user: GitHubUser
